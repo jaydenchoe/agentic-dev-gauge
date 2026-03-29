@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiny Harness Engineering Resource Monitor</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header__left">
+      <h1 class="header__title">Tiny Harness Engineering Resource Monitor</h1>
+      <span class="connection-status" id="connectionStatus" title="Disconnected">
+        <span class="connection-status__dot"></span>
+        <span class="connection-status__text">Disconnected</span>
+      </span>
+    </div>
+    <div class="header__right">
+      <button class="btn btn--icon" id="btnSettings" title="Settings" aria-label="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- System Metrics Section -->
+    <section class="section" id="systemSection">
+      <h2 class="section__title">System</h2>
+      <div class="sys-bars" id="systemBars">
+        <div class="sys-bar" id="cardCpu" data-metric="cpu_percent">
+          <span class="sys-bar__label">CPU</span>
+          <div class="sys-bar__track"><div class="sys-bar__fill" id="barCpu"></div></div>
+          <span class="sys-bar__value" id="valCpu">0%</span>
+        </div>
+        <div class="sys-bar" id="cardMemory" data-metric="memory_percent">
+          <span class="sys-bar__label">Memory</span>
+          <div class="sys-bar__track"><div class="sys-bar__fill" id="barMemory"></div></div>
+          <span class="sys-bar__value" id="valMemory">0%</span>
+          <span class="sys-bar__detail" id="memDetail"></span>
+        </div>
+        <div class="sys-bar" id="cardDisk" data-metric="disk_percent">
+          <span class="sys-bar__label">Disk</span>
+          <div class="sys-bar__track"><div class="sys-bar__fill" id="barDisk"></div></div>
+          <span class="sys-bar__value" id="valDisk">0%</span>
+          <span class="sys-bar__detail" id="diskDetail"></span>
+        </div>
+        <div class="sys-bar" id="cardGpu" data-metric="gpu_percent" style="display:none;">
+          <span class="sys-bar__label">GPU</span>
+          <div class="sys-bar__track"><div class="sys-bar__fill" id="barGpu"></div></div>
+          <span class="sys-bar__value" id="valGpu">0%</span>
+          <span class="sys-bar__detail" id="gpuDetail"></span>
+        </div>
+        <div class="sys-bar sys-bar--net" id="cardNetwork">
+          <span class="sys-bar__label">Network</span>
+          <span class="sys-bar__net-stats">
+            <span class="stat__icon stat__icon--up">&#9650;</span><span id="netSent">0 B/s</span>
+            <span class="stat__icon stat__icon--down">&#9660;</span><span id="netRecv">0 B/s</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Claude Web Usage -->
+    <section class="section" id="claudeWebSection" style="display:none;">
+      <h2 class="section__title">Claude Plan Usage <span class="section__title-tag" id="claudeWebPlan"></span></h2>
+      <div id="claudeWebContent">
+        <div class="claude-web-disconnected" id="claudeWebDisconnected" style="display:none;">
+          <span class="claude-web-disconnected__icon" aria-hidden="true">&#9888;</span>
+          <span>CDP 미연결 — 브라우저 연동이 필요합니다</span>
+        </div>
+        <div class="sys-bars" id="claudeWebMeters" style="display:none;"></div>
+      </div>
+    </section>
+
+
+    <!-- Alerts Section -->
+    <section class="section" id="alertsSection" style="display:none;">
+      <h2 class="section__title">Alerts</h2>
+      <div class="alert-list" id="alertList"></div>
+    </section>
+  </main>
+
+  <!-- Settings Modal -->
+  <div class="modal" id="settingsModal">
+    <div class="modal__backdrop" id="modalBackdrop"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2 class="modal__title">Settings</h2>
+        <button class="btn btn--icon modal__close" id="btnCloseSettings" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body" id="settingsBody">
+        <!-- API Keys -->
+        <fieldset class="settings-group">
+          <legend class="settings-group__title">API Keys</legend>
+          <div class="form-field">
+            <label for="keyAnthropic">Anthropic (Admin Key — usage reports)</label>
+            <input type="password" id="keyAnthropic" placeholder="sk-ant-admin01-..." autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="keyAnthropicRegular">Anthropic (Regular Key — rate limits)</label>
+            <input type="password" id="keyAnthropicRegular" placeholder="sk-ant-api03-..." autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="keyOpenai">OpenAI</label>
+            <input type="password" id="keyOpenai" placeholder="sk-..." autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="keyGithub">GitHub (Copilot)</label>
+            <input type="password" id="keyGithub" placeholder="ghp_..." autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="keyZhipuai">ZhipuAI</label>
+            <input type="password" id="keyZhipuai" placeholder="API key" autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="keyGemini">Gemini</label>
+            <input type="password" id="keyGemini" placeholder="API key" autocomplete="off">
+          </div>
+        </fieldset>
+
+        <!-- Thresholds -->
+        <fieldset class="settings-group">
+          <legend class="settings-group__title">Thresholds</legend>
+          <div class="threshold-field" data-metric="cpu_percent">
+            <span class="threshold-field__label">CPU %</span>
+            <div class="threshold-field__inputs">
+              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
+            </div>
+          </div>
+          <div class="threshold-field" data-metric="memory_percent">
+            <span class="threshold-field__label">Memory %</span>
+            <div class="threshold-field__inputs">
+              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
+            </div>
+          </div>
+          <div class="threshold-field" data-metric="disk_percent">
+            <span class="threshold-field__label">Disk %</span>
+            <div class="threshold-field__inputs">
+              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="85"></label>
+              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
+            </div>
+          </div>
+          <div class="threshold-field" data-metric="token_cost">
+            <span class="threshold-field__label">Token Cost ($)</span>
+            <div class="threshold-field__inputs">
+              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" step="0.5" value="10"></label>
+              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" step="0.5" value="50"></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Anthropic Plan Limits -->
+        <fieldset class="settings-group">
+          <legend class="settings-group__title">Anthropic Plan Limits</legend>
+          <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 8px;">Pro ~44K, Max5x ~88K, Max20x ~220K (session, community estimates)</p>
+          <div class="form-field">
+            <label for="sessionLimit">Session Limit (tokens, 5h rolling)</label>
+            <input type="number" id="sessionLimit" placeholder="e.g. 88000" min="0" step="1000" autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="weeklyLimit">Weekly Limit (tokens, all models)</label>
+            <input type="number" id="weeklyLimit" placeholder="e.g. 500000" min="0" step="1000" autocomplete="off">
+          </div>
+        </fieldset>
+
+        <!-- Budget -->
+        <fieldset class="settings-group">
+          <legend class="settings-group__title">Monthly Budget</legend>
+          <div class="form-field">
+            <label for="monthlyBudget">Budget Limit (USD)</label>
+            <input type="number" id="monthlyBudget" placeholder="e.g. 100" min="0" step="1" autocomplete="off">
+          </div>
+        </fieldset>
+
+        <!-- OpenClaw Gateway -->
+        <fieldset class="settings-group">
+          <legend class="settings-group__title">OpenClaw Gateway</legend>
+          <div class="form-field">
+            <label for="gatewayUrl">Gateway URL</label>
+            <input type="url" id="gatewayUrl" placeholder="https://..." autocomplete="off">
+          </div>
+          <div class="form-field">
+            <label for="gatewayKey">API Key</label>
+            <input type="password" id="gatewayKey" placeholder="API key" autocomplete="off">
+          </div>
+        </fieldset>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--secondary" id="btnCancelSettings">Cancel</button>
+        <button class="btn btn--primary" id="btnSaveSettings">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/websocket.js"></script>
+  <script src="/static/js/settings.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
