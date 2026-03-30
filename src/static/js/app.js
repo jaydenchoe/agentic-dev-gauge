@@ -215,9 +215,9 @@ const App = (() => {
     meters.innerHTML = '';
 
     const items = [
-      { label: 'Session', pct: data.session?.used_percent, reset: data.session?.reset_text },
-      { label: 'Weekly All', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
-      { label: 'Sonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
+      { label: 'Claude Session', pct: data.session?.used_percent, reset: data.session?.reset_text },
+      { label: 'Claude Weekly', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
+      { label: 'Claude Sonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
     ];
 
     for (const item of items) {

@@ -25,7 +25,6 @@
   <main class="main">
     <!-- System Metrics Section -->
     <section class="section" id="systemSection">
-      <h2 class="section__title">System</h2>
       <div class="sys-bars" id="systemBars">
         <div class="sys-bar" id="cardCpu" data-metric="cpu_percent">
           <span class="sys-bar__label">CPU</span>
@@ -62,7 +61,7 @@
 
     <!-- Claude Web Usage -->
     <section class="section" id="claudeWebSection">
-      <h2 class="section__title">Claude Plan Usage <span class="section__title-tag" id="claudeWebPlan"></span></h2>
+      <span class="section__title-tag" id="claudeWebPlan" style="display:none;"></span>
       <div id="claudeWebContent">
         <div class="claude-web-disconnected" id="claudeWebDisconnected" style="display:none;">
           <span class="claude-web-disconnected__icon" aria-hidden="true">&#9888;</span>
@@ -70,17 +69,17 @@
         </div>
         <div class="sys-bars" id="claudeWebMeters">
           <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Session</span>
+            <span class="sys-bar__label">Claude Session</span>
             <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
             <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
           </div>
           <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Weekly All</span>
+            <span class="sys-bar__label">Claude Weekly</span>
             <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
             <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
           </div>
           <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Sonnet</span>
+            <span class="sys-bar__label">Claude Sonnet</span>
             <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
             <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
           </div>
