@@ -5,8 +5,6 @@
 const App = (() => {
   let ws = null;
   let thresholds = {};
-  let alerts = [];
-  const MAX_ALERTS = 20;
   let claudeDataReceived = false;
   let claudeDisconnectTimer = null;
   const CDP_TIMEOUT_MS = 30000;
@@ -42,7 +40,6 @@ const App = (() => {
     ws.on('open', () => updateConnectionStatus('connected'));
     ws.on('close', () => updateConnectionStatus('reconnecting'));
     ws.on('system_metrics', handleSystemMetrics);
-    ws.on('alert', handleAlert);
     ws.on('claude_web', handleClaudeWeb);
 
     ws.connect();
@@ -175,36 +172,6 @@ const App = (() => {
     if (data.network) {
       document.getElementById('netSent').textContent = Charts.formatBytes(data.network.bytes_sent_per_sec);
       document.getElementById('netRecv').textContent = Charts.formatBytes(data.network.bytes_recv_per_sec);
-    }
-  }
-
-  // --- Alert Handler ---
-
-  function handleAlert(data) {
-    if (!data) return;
-
-    alerts.unshift(data);
-    if (alerts.length > MAX_ALERTS) alerts.pop();
-
-    const section = document.getElementById('alertsSection');
-    section.style.display = '';
-
-    const list = document.getElementById('alertList');
-    list.innerHTML = '';
-
-    for (const a of alerts) {
-      const item = document.createElement('div');
-      item.className = 'alert-item';
-      if (a.level === 'critical') item.classList.add('alert-item--critical');
-
-      const time = new Date(a.timestamp);
-      const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-      item.innerHTML = `
-        <span class="alert-item__time">${timeStr}</span>
-        <span class="alert-item__msg">${escapeHtml(a.message)}</span>
-      `;
-      list.appendChild(item);
     }
   }
 
