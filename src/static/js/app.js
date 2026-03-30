@@ -8,6 +8,7 @@ const App = (() => {
   let claudeDataReceived = false;
   let claudeDisconnectTimer = null;
   const CDP_TIMEOUT_MS = 30000;
+  const CIRCUMFERENCE = 314.16; // 2 * PI * 50
 
   function init() {
     Settings.init();
@@ -94,25 +95,34 @@ const App = (() => {
     }
   }
 
-  // --- System Metrics Handler ---
+  // --- Gauge Update ---
 
-  function updateSysBar(barId, valId, cardId, pct, level) {
-    const bar = document.getElementById(barId);
+  function updateGauge(fillId, valId, cardId, pct, level) {
+    const fill = document.getElementById(fillId);
     const val = document.getElementById(valId);
     const card = document.getElementById(cardId);
-    if (bar) {
-      bar.style.width = Math.min(pct, 100) + '%';
-      bar.className = 'sys-bar__fill';
-      if (level === 'warning') bar.classList.add('sys-bar__fill--warning');
-      if (level === 'critical') bar.classList.add('sys-bar__fill--critical');
+
+    if (fill) {
+      const offset = CIRCUMFERENCE * (1 - Math.min(pct, 100) / 100);
+      fill.style.strokeDashoffset = offset;
+      fill.className.baseVal = 'gauge__fill';
+      if (level === 'warning') fill.classList.add('gauge__fill--warning');
+      if (level === 'critical') fill.classList.add('gauge__fill--critical');
     }
-    if (val) val.textContent = Math.round(pct) + '%';
+    if (val) {
+      val.innerHTML = `${Math.round(pct)}<span class="gauge__unit">%</span>`;
+      val.className = 'gauge__value';
+      if (level === 'warning') val.classList.add('gauge__value--warning');
+      if (level === 'critical') val.classList.add('gauge__value--critical');
+    }
     if (card) {
-      card.className = card.className.replace(/\s*sys-bar--(warning|critical)/g, '');
-      if (level === 'warning') card.classList.add('sys-bar--warning');
-      if (level === 'critical') card.classList.add('sys-bar--critical');
+      card.className = card.className.replace(/\s*card--(warning|critical)/g, '');
+      if (level === 'warning') card.classList.add('card--warning');
+      if (level === 'critical') card.classList.add('card--critical');
     }
   }
+
+  // --- System Metrics Handler ---
 
   function handleSystemMetrics(data) {
     if (!data) return;
@@ -124,7 +134,7 @@ const App = (() => {
       const val = data.cpu.usage_percent;
       const th = t.cpu_percent || { warning: 80, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barCpu', 'valCpu', 'cardCpu', val, level);
+      updateGauge('fillCpu', 'valCpu', 'cardCpu', val, level);
     }
 
     // Memory
@@ -132,7 +142,7 @@ const App = (() => {
       const val = data.memory.usage_percent;
       const th = t.memory_percent || { warning: 80, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barMemory', 'valMemory', 'cardMemory', val, level);
+      updateGauge('fillMemory', 'valMemory', 'cardMemory', val, level);
 
       const detail = document.getElementById('memDetail');
       if (detail) {
@@ -145,7 +155,7 @@ const App = (() => {
       const val = data.disk.usage_percent;
       const th = t.disk_percent || { warning: 85, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barDisk', 'valDisk', 'cardDisk', val, level);
+      updateGauge('fillDisk', 'valDisk', 'cardDisk', val, level);
 
       const detail = document.getElementById('diskDetail');
       if (detail) {
@@ -153,14 +163,11 @@ const App = (() => {
       }
     }
 
-    // GPU (optional, show bar if present)
+    // GPU
     if (data.gpu) {
-      const gpuBar = document.getElementById('cardGpu');
-      if (gpuBar) gpuBar.style.display = '';
-
       const val = data.gpu.usage_percent;
       const level = Charts.getLevel(val, 80, 95);
-      updateSysBar('barGpu', 'valGpu', 'cardGpu', val, level);
+      updateGauge('fillGpu', 'valGpu', 'cardGpu', val, level);
 
       const detail = document.getElementById('gpuDetail');
       if (detail) {
@@ -181,9 +188,7 @@ const App = (() => {
     claudeDisconnectTimer = setTimeout(() => {
       if (!claudeDataReceived) {
         const disconnected = document.getElementById('claudeWebDisconnected');
-        const meters = document.getElementById('claudeWebMeters');
-        disconnected.style.display = '';
-        meters.style.display = 'none';
+        if (disconnected) disconnected.style.display = '';
       }
     }, CDP_TIMEOUT_MS);
   }
@@ -191,9 +196,6 @@ const App = (() => {
   // --- Claude Web Usage Handler ---
 
   function handleClaudeWeb(data) {
-    const disconnected = document.getElementById('claudeWebDisconnected');
-    const meters = document.getElementById('claudeWebMeters');
-
     if (!data) return;
 
     claudeDataReceived = true;
@@ -202,46 +204,34 @@ const App = (() => {
       claudeDisconnectTimer = null;
     }
 
-    disconnected.style.display = 'none';
-    meters.style.display = '';
+    const disconnected = document.getElementById('claudeWebDisconnected');
+    if (disconnected) disconnected.style.display = 'none';
 
-    // Plan name in title
+    // Plan name
     const planEl = document.getElementById('claudeWebPlan');
-    const planMap = {'맥스 플랜': 'MAX PLAN 5X', '프로 플랜': 'PRO PLAN', '팀 플랜': 'TEAM PLAN', '무료 플랜': 'FREE PLAN'};
-    const planName = planMap[data.plan] || data.plan;
-    planEl.textContent = planName ? `(${planName})` : '';
+    if (planEl) {
+      const planMap = {'맥스 플랜': 'MAX 5X', '프로 플랜': 'PRO', '팀 플랜': 'TEAM', '무료 플랜': 'FREE'};
+      const planName = planMap[data.plan] || data.plan;
+      planEl.textContent = planName || '';
+    }
 
-    // Build sys-bar style meters
-    meters.innerHTML = '';
-
+    // Update Claude gauges
     const items = [
-      { label: 'Claude Session', pct: data.session?.used_percent, reset: data.session?.reset_text },
-      { label: 'Claude Weekly', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
-      { label: 'Claude Sonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
+      { fill: 'fillClaudeSession', val: 'valClaudeSession', card: 'cardClaudeSession', detail: 'detailClaudeSession', pct: data.session?.used_percent, reset: data.session?.reset_text },
+      { fill: 'fillClaudeWeekly', val: 'valClaudeWeekly', card: 'cardClaudeWeekly', detail: 'detailClaudeWeekly', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
+      { fill: 'fillClaudeSonnet', val: 'valClaudeSonnet', card: 'cardClaudeSonnet', detail: 'detailClaudeSonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
     ];
 
     for (const item of items) {
       if (item.pct == null) continue;
       const level = Charts.getLevel(item.pct, 60, 85);
-      const fillClass = level !== 'normal' ? `sys-bar__fill--${level}` : '';
-      const barClass = level !== 'normal' ? `sys-bar--${level}` : '';
+      updateGauge(item.fill, item.val, item.card, item.pct, level);
 
-      const row = document.createElement('div');
-      row.className = `sys-bar ${barClass}`;
-      row.innerHTML = `
-        <span class="sys-bar__label">${escapeHtml(item.label)}</span>
-        <div class="sys-bar__track"><div class="sys-bar__fill ${fillClass}" style="width:${Math.min(item.pct, 100)}%"></div></div>
-        <span class="sys-bar__value">${Math.round(item.pct)}%</span>
-        ${item.reset ? `<span class="sys-bar__detail">${escapeHtml(item.reset)}</span>` : ''}
-      `;
-      meters.appendChild(row);
+      const detailEl = document.getElementById(item.detail);
+      if (detailEl && item.reset) {
+        detailEl.textContent = item.reset;
+      }
     }
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   }
 
   return { init, onConfigSaved };

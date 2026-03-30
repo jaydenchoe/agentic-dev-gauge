@@ -3,91 +3,150 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tiny Harness Engineering Resource Monitor</title>
+  <title>Tiny Monitor</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <header class="header">
-    <div class="header__left">
-      <h1 class="header__title">Tiny Harness Engineering Resource Monitor</h1>
-      <span class="connection-status" id="connectionStatus" title="Disconnected">
-        <span class="connection-status__dot"></span>
-        <span class="connection-status__text">Disconnected</span>
-      </span>
-    </div>
-    <div class="header__right">
-      <button class="btn btn--icon" id="btnSettings" title="Settings" aria-label="Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
+    <span class="connection-status" id="connectionStatus" title="Disconnected">
+      <span class="connection-status__dot"></span>
+      <span class="connection-status__text">Disconnected</span>
+    </span>
+    <button class="btn btn--icon" id="btnSettings" title="Settings" aria-label="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
   </header>
 
   <main class="main">
-    <!-- System Metrics Section -->
-    <section class="section" id="systemSection">
-      <div class="sys-bars" id="systemBars">
-        <div class="sys-bar" id="cardCpu" data-metric="cpu_percent">
-          <span class="sys-bar__label">CPU</span>
-          <div class="sys-bar__track"><div class="sys-bar__fill" id="barCpu"></div></div>
-          <span class="sys-bar__value" id="valCpu">0%</span>
-        </div>
-        <div class="sys-bar" id="cardMemory" data-metric="memory_percent">
-          <span class="sys-bar__label">Memory</span>
-          <div class="sys-bar__track"><div class="sys-bar__fill" id="barMemory"></div></div>
-          <span class="sys-bar__value" id="valMemory">0%</span>
-          <span class="sys-bar__detail" id="memDetail"></span>
-        </div>
-        <div class="sys-bar" id="cardDisk" data-metric="disk_percent">
-          <span class="sys-bar__label">Disk</span>
-          <div class="sys-bar__track"><div class="sys-bar__fill" id="barDisk"></div></div>
-          <span class="sys-bar__value" id="valDisk">0%</span>
-          <span class="sys-bar__detail" id="diskDetail"></span>
-        </div>
-        <div class="sys-bar" id="cardGpu" data-metric="gpu_percent" style="display:none;">
-          <span class="sys-bar__label">GPU</span>
-          <div class="sys-bar__track"><div class="sys-bar__fill" id="barGpu"></div></div>
-          <span class="sys-bar__value" id="valGpu">0%</span>
-          <span class="sys-bar__detail" id="gpuDetail"></span>
-        </div>
-        <div class="sys-bar sys-bar--net" id="cardNetwork">
-          <span class="sys-bar__label">Network</span>
-          <span class="sys-bar__net-stats">
-            <span class="stat__icon stat__icon--up">&#9650;</span><span id="netSent">0 B/s</span>
-            <span class="stat__icon stat__icon--down">&#9660;</span><span id="netRecv">0 B/s</span>
-          </span>
+    <div class="dashboard-grid">
+      <!-- Row 1: CPU, Memory, Disk -->
+      <div class="card" id="cardCpu" data-metric="cpu_percent">
+        <span class="card__label">CPU</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill" id="fillCpu" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value" id="valCpu">0<span class="gauge__unit">%</span></span>
+          </div>
         </div>
       </div>
-    </section>
 
-    <!-- Claude Web Usage -->
-    <section class="section" id="claudeWebSection">
-      <span class="section__title-tag" id="claudeWebPlan" style="display:none;"></span>
-      <div id="claudeWebContent">
+      <div class="card" id="cardMemory" data-metric="memory_percent">
+        <span class="card__label">Memory</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill" id="fillMemory" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value" id="valMemory">0<span class="gauge__unit">%</span></span>
+          </div>
+        </div>
+        <span class="card__detail" id="memDetail"></span>
+      </div>
+
+      <div class="card" id="cardDisk" data-metric="disk_percent">
+        <span class="card__label">Disk</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill" id="fillDisk" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value" id="valDisk">0<span class="gauge__unit">%</span></span>
+          </div>
+        </div>
+        <span class="card__detail" id="diskDetail"></span>
+      </div>
+
+      <!-- Row 2: GPU, Network, Claude icon -->
+      <div class="card" id="cardGpu" data-metric="gpu_percent">
+        <span class="card__label">GPU</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill" id="fillGpu" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value gauge__value--muted" id="valGpu">N/A</span>
+          </div>
+        </div>
+        <span class="card__detail" id="gpuDetail"></span>
+      </div>
+
+      <div class="card card--net" id="cardNetwork">
+        <span class="card__label">Network</span>
+        <div class="card__body card__body--net">
+          <div class="net-stat">
+            <span class="net-stat__icon net-stat__icon--up">&#9650;</span>
+            <span class="net-stat__value" id="netSent">0 B/s</span>
+          </div>
+          <div class="net-stat">
+            <span class="net-stat__icon net-stat__icon--down">&#9660;</span>
+            <span class="net-stat__value" id="netRecv">0 B/s</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card--claude-brand" id="cardClaudeBrand">
+        <div class="claude-brand">
+          <svg class="claude-brand__icon" viewBox="0 0 24 24" fill="none">
+            <path d="M16.98 7.55 12.8 3.36a1.12 1.12 0 0 0-1.58 0L7.02 7.55a1.12 1.12 0 0 0 0 1.58l4.19 4.19a1.12 1.12 0 0 0 1.58 0l4.19-4.19a1.12 1.12 0 0 0 0-1.58Z" fill="#D97706"/>
+            <path d="M12.8 13.32 8.6 17.51a1.12 1.12 0 0 0 0 1.58l.4.4a1.12 1.12 0 0 0 1.58 0l4.19-4.19a1.12 1.12 0 0 0 0-1.58l-.4-.4a1.12 1.12 0 0 0-1.58 0Z" fill="#D97706" opacity="0.6"/>
+          </svg>
+          <span class="claude-brand__name">Claude</span>
+          <span class="claude-brand__plan" id="claudeWebPlan"></span>
+        </div>
         <div class="claude-web-disconnected" id="claudeWebDisconnected" style="display:none;">
-          <span class="claude-web-disconnected__icon" aria-hidden="true">&#9888;</span>
-          <span>CDP 미연결 — 브라우저 연동이 필요합니다</span>
-        </div>
-        <div class="sys-bars" id="claudeWebMeters">
-          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Claude Session</span>
-            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
-            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
-          </div>
-          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Claude Weekly</span>
-            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
-            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
-          </div>
-          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
-            <span class="sys-bar__label">Claude Sonnet</span>
-            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
-            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
-          </div>
+          <span>CDP 미연결</span>
         </div>
       </div>
-    </section>
 
+      <!-- Row 3: Claude Session, Weekly, Sonnet -->
+      <div class="card card--claude" id="cardClaudeSession">
+        <span class="card__label">Session</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeSession" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value gauge__value--muted" id="valClaudeSession">--</span>
+          </div>
+        </div>
+        <span class="card__detail" id="detailClaudeSession"></span>
+      </div>
 
+      <div class="card card--claude" id="cardClaudeWeekly">
+        <span class="card__label">Weekly</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeWeekly" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value gauge__value--muted" id="valClaudeWeekly">--</span>
+          </div>
+        </div>
+        <span class="card__detail" id="detailClaudeWeekly"></span>
+      </div>
+
+      <div class="card card--claude" id="cardClaudeSonnet">
+        <span class="card__label">Sonnet</span>
+        <div class="card__body">
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 120 120">
+              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
+              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeSonnet" cx="60" cy="60" r="50"/>
+            </svg>
+            <span class="gauge__value gauge__value--muted" id="valClaudeSonnet">--</span>
+          </div>
+        </div>
+        <span class="card__detail" id="detailClaudeSonnet"></span>
+      </div>
+    </div>
   </main>
 
   <!-- Settings Modal -->
@@ -101,7 +160,6 @@
         </button>
       </div>
       <div class="modal__body" id="settingsBody">
-        <!-- API Keys -->
         <fieldset class="settings-group">
           <legend class="settings-group__title">API Keys</legend>
           <div class="form-field">
@@ -129,8 +187,6 @@
             <input type="password" id="keyGemini" placeholder="API key" autocomplete="off">
           </div>
         </fieldset>
-
-        <!-- Thresholds -->
         <fieldset class="settings-group">
           <legend class="settings-group__title">Thresholds</legend>
           <div class="threshold-field" data-metric="cpu_percent">
@@ -162,8 +218,6 @@
             </div>
           </div>
         </fieldset>
-
-        <!-- Anthropic Plan Limits -->
         <fieldset class="settings-group">
           <legend class="settings-group__title">Anthropic Plan Limits</legend>
           <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 8px;">Pro ~44K, Max5x ~88K, Max20x ~220K (session, community estimates)</p>
@@ -176,8 +230,6 @@
             <input type="number" id="weeklyLimit" placeholder="e.g. 500000" min="0" step="1000" autocomplete="off">
           </div>
         </fieldset>
-
-        <!-- Budget -->
         <fieldset class="settings-group">
           <legend class="settings-group__title">Monthly Budget</legend>
           <div class="form-field">
@@ -185,8 +237,6 @@
             <input type="number" id="monthlyBudget" placeholder="e.g. 100" min="0" step="1" autocomplete="off">
           </div>
         </fieldset>
-
-        <!-- OpenClaw Gateway -->
         <fieldset class="settings-group">
           <legend class="settings-group__title">OpenClaw Gateway</legend>
           <div class="form-field">
