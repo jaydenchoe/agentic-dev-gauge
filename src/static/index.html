@@ -61,14 +61,30 @@
     </section>
 
     <!-- Claude Web Usage -->
-    <section class="section" id="claudeWebSection" style="display:none;">
+    <section class="section" id="claudeWebSection">
       <h2 class="section__title">Claude Plan Usage <span class="section__title-tag" id="claudeWebPlan"></span></h2>
       <div id="claudeWebContent">
         <div class="claude-web-disconnected" id="claudeWebDisconnected" style="display:none;">
           <span class="claude-web-disconnected__icon" aria-hidden="true">&#9888;</span>
           <span>CDP 미연결 — 브라우저 연동이 필요합니다</span>
         </div>
-        <div class="sys-bars" id="claudeWebMeters" style="display:none;"></div>
+        <div class="sys-bars" id="claudeWebMeters">
+          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
+            <span class="sys-bar__label">Session</span>
+            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
+            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
+          </div>
+          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
+            <span class="sys-bar__label">Weekly All</span>
+            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
+            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
+          </div>
+          <div class="sys-bar sys-bar--skeleton" data-skeleton="true">
+            <span class="sys-bar__label">Sonnet</span>
+            <div class="sys-bar__track"><div class="sys-bar__fill sys-bar__fill--skeleton"></div></div>
+            <span class="sys-bar__value sys-bar__value--skeleton">Reading...</span>
+          </div>
+        </div>
       </div>
     </section>
 

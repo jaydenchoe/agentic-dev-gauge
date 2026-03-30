@@ -927,3 +927,36 @@ body {
   font-size: 0.7rem;
   color: var(--text-muted);
 }
+
+/* --- Skeleton Loading for Claude Usage --- */
+.sys-bar--skeleton {
+  opacity: 0.6;
+}
+
+.sys-bar__fill--skeleton {
+  width: 0% !important;
+  background: var(--gauge-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.sys-bar__fill--skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.sys-bar__value--skeleton {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 60px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
