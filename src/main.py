@@ -25,6 +25,7 @@ from src.config import Settings
 from src.core.ports.metrics import MetricsPort
 from src.core.ports.notification import NotificationPort
 from src.core.ports.usage import UsagePort
+from src.chrome_launcher import launch_debug_chrome, shutdown_debug_chrome
 from src.services.alert_service import AlertService
 from src.services.monitor_service import MonitorService
 from src.services.usage_service import UsageService
@@ -122,6 +123,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
     app.state.settings = settings
 
+    # Launch debug Chrome for CDP scraping
+    chrome_proc = None
+    if settings.chrome_debug_auto_launch:
+        chrome_proc = await launch_debug_chrome(
+            profile_dir=settings.chrome_debug_profile_dir,
+            port=settings.chrome_debug_port,
+        )
+
     # Build adapters
     metrics_adapter = _build_metrics_adapter(settings)
     usage_adapters = _build_usage_adapters()
@@ -160,6 +169,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     broadcast_task.cancel()
     await monitor_svc.stop()
     await usage_svc.stop()
+    shutdown_debug_chrome(chrome_proc)
     logger.info("Tiny Monitor stopped")
 
 

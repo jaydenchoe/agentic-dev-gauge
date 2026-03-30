@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     claude_web_cdp_port: int = 9222
     claude_web_interval_sec: float = 300  # 5 minutes
 
+    # Chrome debug profile for CDP scraping
+    chrome_debug_profile_dir: str = "~/.tiny-monitor/chrome-debug-profile"
+    chrome_debug_port: int = 9222
+    chrome_debug_auto_launch: bool = True  # auto-launch debug Chrome on startup
+
     # Monthly budget cap (USD) — used to show usage as % of budget
     monthly_budget_usd: Optional[float] = None
 
