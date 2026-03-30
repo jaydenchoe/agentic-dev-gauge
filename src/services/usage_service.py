@@ -1,0 +1,103 @@
+"""Collects AI token usage from multiple UsagePort adapters."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Optional
+
+from src.adapters.ai_usage.claude_web_usage import ClaudeWebUsage, fetch_claude_web_usage
+from src.core.models import TokenUsage, UsageSnapshot
+from src.core.ports.usage import UsagePort
+
+logger = logging.getLogger(__name__)
+
+
+class UsageService:
+    def __init__(
+        self,
+        adapters: list[UsagePort],
+        api_keys: dict[str, str],
+        interval: float = 60.0,
+        claude_web_cdp_port: int = 9222,
+        claude_web_interval: float = 300.0,
+    ) -> None:
+        self._adapters = adapters
+        self._api_keys = api_keys  # provider_name -> api_key
+        self._interval = interval
+        self._latest: Optional[UsageSnapshot] = None
+        self._task: Optional[asyncio.Task] = None
+        # Claude web usage
+        self._cdp_port = claude_web_cdp_port
+        self._claude_web_interval = claude_web_interval
+        self._claude_web_latest: Optional[ClaudeWebUsage] = None
+        self._claude_web_task: Optional[asyncio.Task] = None
+
+    @property
+    def latest(self) -> Optional[UsageSnapshot]:
+        return self._latest
+
+    @property
+    def claude_web_latest(self) -> Optional[ClaudeWebUsage]:
+        return self._claude_web_latest
+
+    def update_api_keys(self, api_keys: dict[str, str]) -> None:
+        self._api_keys = api_keys
+
+    async def collect_once(self) -> UsageSnapshot:
+        all_usages: list[TokenUsage] = []
+        for adapter in self._adapters:
+            provider = adapter.provider_name()
+            api_key = self._api_keys.get(provider)
+            if not api_key:
+                continue
+            try:
+                usages = await adapter.fetch_usage(api_key)
+                all_usages.extend(usages)
+            except Exception:
+                logger.exception("Failed to fetch usage for %s", provider)
+
+        total_cost = sum(u.cost_usd for u in all_usages if u.cost_usd is not None)
+        snapshot = UsageSnapshot(
+            timestamp=datetime.now(timezone.utc),
+            usages=all_usages,
+            total_cost_usd=total_cost if total_cost > 0 else None,
+        )
+        self._latest = snapshot
+        return snapshot
+
+    async def _loop(self) -> None:
+        while True:
+            try:
+                await self.collect_once()
+            except Exception:
+                logger.exception("Usage collection loop error")
+            await asyncio.sleep(self._interval)
+
+    async def _claude_web_loop(self) -> None:
+        while True:
+            try:
+                result = await fetch_claude_web_usage(cdp_port=self._cdp_port)
+                if result:
+                    self._claude_web_latest = result
+                    logger.info("Claude web usage: session=%s%%, weekly=%s%%",
+                                result.session_used_percent, result.weekly_all_used_percent)
+            except Exception:
+                logger.exception("Claude web usage collection error")
+            await asyncio.sleep(self._claude_web_interval)
+
+    def start(self) -> None:
+        if self._task is None or self._task.done():
+            self._task = asyncio.create_task(self._loop())
+        if self._claude_web_task is None or self._claude_web_task.done():
+            self._claude_web_task = asyncio.create_task(self._claude_web_loop())
+
+    async def stop(self) -> None:
+        for task in (self._task, self._claude_web_task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
