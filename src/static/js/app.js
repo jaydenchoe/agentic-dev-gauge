@@ -7,12 +7,16 @@ const App = (() => {
   let thresholds = {};
   let alerts = [];
   const MAX_ALERTS = 20;
+  let claudeDataReceived = false;
+  let claudeDisconnectTimer = null;
+  const CDP_TIMEOUT_MS = 30000;
 
   function init() {
     Settings.init();
     loadThresholds();
     connectWebSocket();
     fetchInitialData();
+    startCdpTimeout();
   }
 
   function loadThresholds() {
@@ -204,19 +208,31 @@ const App = (() => {
     }
   }
 
+  // --- CDP Timeout ---
+
+  function startCdpTimeout() {
+    claudeDisconnectTimer = setTimeout(() => {
+      if (!claudeDataReceived) {
+        const disconnected = document.getElementById('claudeWebDisconnected');
+        const meters = document.getElementById('claudeWebMeters');
+        disconnected.style.display = '';
+        meters.style.display = 'none';
+      }
+    }, CDP_TIMEOUT_MS);
+  }
+
   // --- Claude Web Usage Handler ---
 
   function handleClaudeWeb(data) {
-    const section = document.getElementById('claudeWebSection');
     const disconnected = document.getElementById('claudeWebDisconnected');
     const meters = document.getElementById('claudeWebMeters');
 
-    section.style.display = '';
+    if (!data) return;
 
-    if (!data) {
-      disconnected.style.display = '';
-      meters.style.display = 'none';
-      return;
+    claudeDataReceived = true;
+    if (claudeDisconnectTimer) {
+      clearTimeout(claudeDisconnectTimer);
+      claudeDisconnectTimer = null;
     }
 
     disconnected.style.display = 'none';
