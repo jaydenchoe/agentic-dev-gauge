@@ -162,10 +162,10 @@ body {
   min-height: 0;
 }
 
-.section--system { flex: 3; }
-.section--claude { flex: 4; }
-.section--copilot { flex: 2; }
-.section--zhipuai { flex: 2; }
+.section--system { flex: 1; }
+.section--claude { flex: 1; }
+.section--copilot { flex: 1; }
+.section--zhipuai { flex: 1; }
 
 .section__header {
   display: flex;
