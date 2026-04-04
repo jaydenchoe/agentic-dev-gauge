@@ -448,10 +448,10 @@ const App = (() => {
     const level = Charts.getLevel(vramPct, th.warning, th.critical);
     updateBar('fillOllama', 'valOllama', 'cardOllama', vramPct, level);
 
-    // Override value: show tok/s instead of VRAM %
+    // Show tok/s and VRAM % together
     if (valEl) {
       if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tk/s</span>';
+        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tk/s</span> · ' + Math.round(vramPct) + '<span class="bar__unit">%</span>';
       } else {
         valEl.innerHTML = Math.round(vramPct) + '<span class="bar__unit">%</span>';
       }
@@ -467,9 +467,6 @@ const App = (() => {
       if (data.benchmark_ago) parts.push(data.benchmark_ago);
       detailEl.textContent = parts.join(' · ');
     }
-
-    // Sparkline: track VRAM % history
-    Charts.pushSparkline('sparkOllama', vramPct, level);
   }
 
   return { init, onConfigSaved };
