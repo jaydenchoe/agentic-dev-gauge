@@ -32,6 +32,7 @@ class ZhipuAIUsageAdapter(UsagePort):
             return []
 
         used = data.get("used", 0)
+        limit = data.get("limit", None)
         return [
             TokenUsage(
                 provider="zhipuai",
@@ -41,5 +42,6 @@ class ZhipuAIUsageAdapter(UsagePort):
                 total_tokens=used,
                 cost_usd=None,
                 period="current_month",
+                quota_limit=limit,
             )
         ]

@@ -18,135 +18,100 @@
   </header>
 
   <main class="main">
-    <div class="dashboard-grid">
-      <!-- Row 1: CPU, Memory, Disk -->
-      <div class="card" id="cardCpu" data-metric="cpu_percent">
-        <span class="card__label">CPU</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill" id="fillCpu" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value" id="valCpu">0<span class="gauge__unit">%</span></span>
+    <!-- System Section -->
+    <section class="section section--system">
+      <div class="section__header">System</div>
+      <div class="section__grid section__grid--3col">
+        <div class="card" id="cardCpu" data-metric="cpu_percent">
+          <div class="bar">
+            <div class="bar__fill" id="fillCpu"></div>
+            <span class="bar__label">CPU</span>
+            <span class="bar__value" id="valCpu">0<span class="bar__unit">%</span></span>
           </div>
         </div>
-      </div>
 
-      <div class="card" id="cardMemory" data-metric="memory_percent">
-        <span class="card__label">Memory</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill" id="fillMemory" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value" id="valMemory">0<span class="gauge__unit">%</span></span>
+        <div class="card" id="cardMemory" data-metric="memory_percent">
+          <div class="bar">
+            <div class="bar__fill" id="fillMemory"></div>
+            <span class="bar__label">Memory</span>
+            <span class="bar__detail" id="memDetail"></span>
+            <span class="bar__value" id="valMemory">0<span class="bar__unit">%</span></span>
           </div>
         </div>
-        <span class="card__detail" id="memDetail"></span>
-      </div>
 
-      <div class="card" id="cardDisk" data-metric="disk_percent">
-        <span class="card__label">Disk</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill" id="fillDisk" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value" id="valDisk">0<span class="gauge__unit">%</span></span>
+        <div class="card" id="cardDisk" data-metric="disk_percent">
+          <div class="bar">
+            <div class="bar__fill" id="fillDisk"></div>
+            <span class="bar__label">Disk</span>
+            <span class="bar__detail" id="diskDetail"></span>
+            <span class="bar__value" id="valDisk">0<span class="bar__unit">%</span></span>
           </div>
         </div>
-        <span class="card__detail" id="diskDetail"></span>
-      </div>
 
-      <!-- Row 2: GPU, Network, Claude icon -->
-      <div class="card" id="cardGpu" data-metric="gpu_percent">
-        <span class="card__label">GPU</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill" id="fillGpu" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value gauge__value--muted" id="valGpu">N/A</span>
-          </div>
-        </div>
-        <span class="card__detail" id="gpuDetail"></span>
       </div>
+    </section>
 
-      <div class="card card--net" id="cardNetwork">
-        <span class="card__label">Network</span>
-        <div class="card__body card__body--net">
-          <div class="net-stat">
-            <span class="net-stat__icon net-stat__icon--up">&#9650;</span>
-            <span class="net-stat__value" id="netSent">0 B/s</span>
-          </div>
-          <div class="net-stat">
-            <span class="net-stat__icon net-stat__icon--down">&#9660;</span>
-            <span class="net-stat__value" id="netRecv">0 B/s</span>
+    <!-- Claude Section -->
+    <section class="section section--claude">
+      <div class="section__header">
+        <span>Claude</span>
+        <span class="section__badge section__badge--claude" id="claudeWebPlan"></span>
+        <span class="section__badge section__badge--dim" id="claudeWebDisconnected" style="display:none;">CDP Disconnected</span>
+      </div>
+      <div class="section__grid" id="cardClaudeBrand">
+        <div class="card card--claude" id="cardClaudeSession">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillClaudeSession"></div>
+            <span class="bar__label">Session</span>
+            <span class="bar__detail" id="detailClaudeSession"></span>
+            <span class="bar__value bar__value--muted" id="valClaudeSession">--</span>
           </div>
         </div>
-      </div>
 
-      <div class="card card--claude-brand" id="cardClaudeBrand">
-        <div class="claude-brand">
-          <svg class="claude-brand__icon" viewBox="0 0 24 24" fill="none">
-            <path d="M16.98 7.55 12.8 3.36a1.12 1.12 0 0 0-1.58 0L7.02 7.55a1.12 1.12 0 0 0 0 1.58l4.19 4.19a1.12 1.12 0 0 0 1.58 0l4.19-4.19a1.12 1.12 0 0 0 0-1.58Z" fill="#D97706"/>
-            <path d="M12.8 13.32 8.6 17.51a1.12 1.12 0 0 0 0 1.58l.4.4a1.12 1.12 0 0 0 1.58 0l4.19-4.19a1.12 1.12 0 0 0 0-1.58l-.4-.4a1.12 1.12 0 0 0-1.58 0Z" fill="#D97706" opacity="0.6"/>
-          </svg>
-          <span class="claude-brand__name">Claude</span>
-          <span class="claude-brand__plan" id="claudeWebPlan"></span>
-        </div>
-        <div class="claude-web-disconnected" id="claudeWebDisconnected" style="display:none;">
-          <span>CDP 미연결</span>
-        </div>
-      </div>
-
-      <!-- Row 3: Claude Session, Weekly, Sonnet -->
-      <div class="card card--claude" id="cardClaudeSession">
-        <span class="card__label">Session</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeSession" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value gauge__value--muted" id="valClaudeSession">--</span>
+        <div class="card card--claude" id="cardClaudeWeekly">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillClaudeWeekly"></div>
+            <span class="bar__label">Weekly</span>
+            <span class="bar__detail" id="detailClaudeWeekly"></span>
+            <span class="bar__value bar__value--muted" id="valClaudeWeekly">--</span>
           </div>
         </div>
-        <span class="card__detail" id="detailClaudeSession"></span>
-      </div>
 
-      <div class="card card--claude" id="cardClaudeWeekly">
-        <span class="card__label">Weekly</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeWeekly" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value gauge__value--muted" id="valClaudeWeekly">--</span>
+        <div class="card card--claude" id="cardClaudeSonnet">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillClaudeSonnet"></div>
+            <span class="bar__label">Sonnet</span>
+            <span class="bar__detail" id="detailClaudeSonnet"></span>
+            <span class="bar__value bar__value--muted" id="valClaudeSonnet">--</span>
           </div>
         </div>
-        <span class="card__detail" id="detailClaudeWeekly"></span>
-      </div>
 
-      <div class="card card--claude" id="cardClaudeSonnet">
-        <span class="card__label">Sonnet</span>
-        <div class="card__body">
-          <div class="gauge">
-            <svg class="gauge__svg" viewBox="0 0 120 120">
-              <circle class="gauge__bg" cx="60" cy="60" r="50"/>
-              <circle class="gauge__fill gauge__fill--skeleton" id="fillClaudeSonnet" cx="60" cy="60" r="50"/>
-            </svg>
-            <span class="gauge__value gauge__value--muted" id="valClaudeSonnet">--</span>
+        <div class="card card--claude" id="cardClaudeExtra">
+          <div class="bar bar--info">
+            <span class="bar__label">Extra</span>
+            <span class="bar__value" id="valClaudeExtra">--</span>
           </div>
         </div>
-        <span class="card__detail" id="detailClaudeSonnet"></span>
       </div>
-    </div>
+    </section>
+
+    <!-- ZhipuAI Section -->
+    <section class="section section--zhipuai">
+      <div class="section__header">
+        <span>ZhipuAI</span>
+        <span class="section__badge section__badge--accent" id="zhipuaiPlan">Annual</span>
+      </div>
+      <div class="section__grid section__grid--1col" id="cardZhipuaiBrand">
+        <div class="card card--zhipuai" id="cardZhipuaiQuota">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiQuota"></div>
+            <span class="bar__label">Quota</span>
+            <span class="bar__detail" id="detailZhipuaiQuota"></span>
+            <span class="bar__value bar__value--muted" id="valZhipuaiQuota">--<span class="bar__unit">%</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Settings Modal -->
@@ -220,7 +185,7 @@
         </fieldset>
         <fieldset class="settings-group">
           <legend class="settings-group__title">Anthropic Plan Limits</legend>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 8px;">Pro ~44K, Max5x ~88K, Max20x ~220K (session, community estimates)</p>
+          <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 8px;">Pro ~44K, Max5x ~88K, Max20x ~220K (session, community estimates)</p>
           <div class="form-field">
             <label for="sessionLimit">Session Limit (tokens, 5h rolling)</label>
             <input type="number" id="sessionLimit" placeholder="e.g. 88000" min="0" step="1000" autocomplete="off">
