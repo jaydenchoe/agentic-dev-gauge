@@ -214,6 +214,16 @@ async def claude_web_usage(request: Request) -> Any:
     return {"data": data.to_dict()}
 
 
+@router.get("/copilot-web-usage")
+async def copilot_web_usage(request: Request) -> Any:
+    """Return GitHub Copilot premium requests usage scraped via CDP."""
+    svc = request.app.state.usage_service
+    data = svc.copilot_web_latest
+    if data is None:
+        return {"error": "no data yet (CDP Chrome running? GitHub logged in?)", "data": None}
+    return {"data": data.to_dict()}
+
+
 @router.get("/ratelimits")
 async def ratelimits(request: Request) -> dict:
     """Return Anthropic plan usage (session 5h + weekly)."""

@@ -164,6 +164,7 @@ body {
 
 .section--system { flex: 3; }
 .section--claude { flex: 4; }
+.section--copilot { flex: 1.5; }
 .section--zhipuai { flex: 1.5; }
 
 .section__header {
@@ -190,6 +191,11 @@ body {
 .section__badge--claude {
   color: var(--color-warning);
   background: rgba(217, 119, 6, 0.12);
+}
+
+.section__badge--copilot {
+  color: #79c0ff;
+  background: rgba(121, 192, 255, 0.12);
 }
 
 .section__badge--accent {
@@ -372,6 +378,11 @@ body {
 /* --- Claude label accent --- */
 .card--claude .bar__label {
   color: var(--color-warning);
+}
+
+/* --- Copilot label accent --- */
+.card--copilot .bar__label {
+  color: #79c0ff;
 }
 
 /* --- ZhipuAI label accent --- */

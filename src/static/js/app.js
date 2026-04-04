@@ -7,6 +7,8 @@ const App = (() => {
   let thresholds = {};
   let claudeDataReceived = false;
   let claudeDisconnectTimer = null;
+  let copilotDataReceived = false;
+  let copilotDisconnectTimer = null;
   const CDP_TIMEOUT_MS = 30000;
 
   function init() {
@@ -15,6 +17,7 @@ const App = (() => {
     connectWebSocket();
     fetchInitialData();
     startCdpTimeout();
+    startCopilotCdpTimeout();
   }
 
   function loadThresholds() {
@@ -66,11 +69,12 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes, usageRes] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes, copilotRes] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/config'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
+        fetch('/api/copilot-web-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -95,6 +99,11 @@ const App = (() => {
       if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
         const data = await usageRes.value.json();
         handleUsageUpdate(data);
+      }
+
+      if (copilotRes.status === 'fulfilled' && copilotRes.value.ok) {
+        const data = await copilotRes.value.json();
+        handleCopilotWeb(data.data);
       }
     } catch (e) {
       // Server not running yet
@@ -238,6 +247,50 @@ const App = (() => {
     }
   }
 
+  // --- Copilot CDP Timeout ---
+
+  function startCopilotCdpTimeout() {
+    copilotDisconnectTimer = setTimeout(() => {
+      if (!copilotDataReceived) {
+        const disconnected = document.getElementById('copilotWebDisconnected');
+        if (disconnected) disconnected.style.display = '';
+      }
+    }, CDP_TIMEOUT_MS);
+  }
+
+  // --- Copilot Web Usage Handler ---
+
+  function handleCopilotWeb(data) {
+    if (!data) return;
+
+    copilotDataReceived = true;
+    if (copilotDisconnectTimer) {
+      clearTimeout(copilotDisconnectTimer);
+      copilotDisconnectTimer = null;
+    }
+
+    const disconnected = document.getElementById('copilotWebDisconnected');
+    if (disconnected) disconnected.style.display = 'none';
+
+    // Plan name
+    const planEl = document.getElementById('copilotPlan');
+    if (planEl && data.plan) {
+      planEl.textContent = data.plan.toUpperCase();
+    }
+
+    // Premium requests bar
+    if (data.premium_used_percent != null) {
+      const pct = data.premium_used_percent;
+      const level = Charts.getLevel(pct, 60, 85);
+      updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
+
+      const detailEl = document.getElementById('detailCopilotPremium');
+      if (detailEl && data.reset_text) {
+        detailEl.textContent = data.reset_text;
+      }
+    }
+  }
+
   // --- Usage Update Handler (WebSocket "usage_update" channel) ---
 
   function handleUsageUpdate(data) {
@@ -246,6 +299,11 @@ const App = (() => {
     // Forward nested claude_web data to the existing handler
     if (data.claude_web) {
       handleClaudeWeb(data.claude_web);
+    }
+
+    // Forward nested copilot_web data
+    if (data.copilot_web) {
+      handleCopilotWeb(data.copilot_web);
     }
 
     // Process per-provider token usages
