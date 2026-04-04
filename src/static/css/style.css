@@ -164,7 +164,14 @@ body {
 
 .section--system { flex: 1; }
 .section--claude { flex: 1; }
-.section--services { flex: 1; }
+.section-row {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.section-row .section--copilot { flex: 1; }
+.section-row .section--zhipuai { flex: 2; }
 .section--local { flex: 1; }
 
 .section__header {
