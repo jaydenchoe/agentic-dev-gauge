@@ -16,6 +16,7 @@ _DEFAULT_THRESHOLDS = [
     {"metric": "memory_percent", "warning": 80, "critical": 95},
     {"metric": "disk_percent", "warning": 85, "critical": 95},
     {"metric": "token_cost", "warning": 10.0, "critical": 50.0},
+    {"metric": "llm_usage_percent", "warning": 80, "critical": 90},
 ]
 
 

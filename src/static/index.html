@@ -189,6 +189,13 @@
               <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" step="0.5" value="50"></label>
             </div>
           </div>
+          <div class="threshold-field" data-metric="llm_usage_percent">
+            <span class="threshold-field__label">LLM Usage %</span>
+            <div class="threshold-field__inputs">
+              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="90"></label>
+            </div>
+          </div>
         </fieldset>
         <fieldset class="settings-group">
           <legend class="settings-group__title">OpenClaw Gateway</legend>
