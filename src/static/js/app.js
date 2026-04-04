@@ -317,36 +317,50 @@ const App = (() => {
 
   // --- ZhipuAI Usage Handler ---
 
+  let zhipuaiPlanSet = false;
+
   function handleZhipuaiUsage(usage) {
     if (!usage) return;
 
-    const used = usage.total_tokens || 0;
-    const limit = usage.quota_limit;
+    const model = usage.model || '';
+    const pct = usage.quota_percentage != null ? usage.quota_percentage : null;
 
-    const planEl = document.getElementById('zhipuaiPlan');
-    if (planEl) {
-      planEl.textContent = 'Annual';
+    // Set plan badge once from model string (e.g. "time-limit (max)")
+    if (!zhipuaiPlanSet) {
+      const planEl = document.getElementById('zhipuaiPlan');
+      if (planEl) {
+        const m = model.match(/\((\w+)\)/);
+        if (m) {
+          planEl.textContent = m[1].toUpperCase();
+          zhipuaiPlanSet = true;
+        }
+      }
     }
 
-    if (limit && limit > 0) {
-      const pct = Math.min(Math.round(used / limit * 100), 100);
-      const level = Charts.getLevel(pct, 60, 85);
-      updateBar('fillZhipuaiQuota', 'valZhipuaiQuota', 'cardZhipuaiQuota', pct, level);
-
-      const detailEl = document.getElementById('detailZhipuaiQuota');
+    if (model.startsWith('time-limit')) {
+      if (pct != null) {
+        const level = Charts.getLevel(pct, 60, 85);
+        updateBar('fillZhipuaiTime', 'valZhipuaiTime', 'cardZhipuaiTime', pct, level);
+      }
+      const detailEl = document.getElementById('detailZhipuaiTime');
       if (detailEl) {
-        detailEl.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`;
+        const limit = usage.quota_limit;
+        const used = usage.total_tokens || 0;
+        if (limit) {
+          detailEl.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`;
+        }
+        if (usage.reset_text) {
+          detailEl.textContent = (detailEl.textContent ? detailEl.textContent + ' · ' : '') + usage.reset_text;
+        }
       }
-    } else {
-      const valEl = document.getElementById('valZhipuaiQuota');
-      if (valEl) {
-        valEl.innerHTML = `${used.toLocaleString()}<span class="bar__unit"> tok</span>`;
-        valEl.className = 'bar__value';
+    } else if (model.startsWith('tokens-limit')) {
+      if (pct != null) {
+        const level = Charts.getLevel(pct, 60, 85);
+        updateBar('fillZhipuaiTokens', 'valZhipuaiTokens', 'cardZhipuaiTokens', pct, level);
       }
-      const fillEl = document.getElementById('fillZhipuaiQuota');
-      if (fillEl) {
-        fillEl.style.width = used > 0 ? '100%' : '0%';
-        fillEl.className = 'bar__fill';
+      const detailEl = document.getElementById('detailZhipuaiTokens');
+      if (detailEl && usage.reset_text) {
+        detailEl.textContent = usage.reset_text;
       }
     }
   }

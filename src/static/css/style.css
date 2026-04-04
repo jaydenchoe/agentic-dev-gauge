@@ -165,7 +165,7 @@ body {
 .section--system { flex: 3; }
 .section--claude { flex: 4; }
 .section--copilot { flex: 1.5; }
-.section--zhipuai { flex: 1.5; }
+.section--zhipuai { flex: 2; }
 
 .section__header {
   display: flex;

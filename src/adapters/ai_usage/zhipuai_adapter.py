@@ -1,8 +1,9 @@
-"""ZhipuAIUsageAdapter — fetch GLM token usage from ZhipuAI API."""
+"""ZhipuAIUsageAdapter — fetch GLM quota usage from ZhipuAI monitor API."""
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 import httpx
 
@@ -31,17 +32,52 @@ class ZhipuAIUsageAdapter(UsagePort):
             logger.warning("ZhipuAI usage API error: %s", exc)
             return []
 
-        used = data.get("used", 0)
-        limit = data.get("limit", None)
-        return [
-            TokenUsage(
-                provider="zhipuai",
-                model="glm",
-                input_tokens=used,
-                output_tokens=0,
-                total_tokens=used,
-                cost_usd=None,
-                period="current_month",
-                quota_limit=limit,
-            )
-        ]
+        if data.get("code") != 200 or not data.get("data"):
+            logger.warning("ZhipuAI unexpected response: %s", data.get("msg"))
+            return []
+
+        payload = data["data"]
+        limits = payload.get("limits", [])
+        level = payload.get("level", "unknown")
+
+        results: list[TokenUsage] = []
+        for limit in limits:
+            limit_type = limit.get("type", "")
+            percentage = limit.get("percentage", 0)
+            usage = limit.get("usage")
+            current = limit.get("currentValue")
+            remaining = limit.get("remaining")
+
+            reset_ts = limit.get("nextResetTime")
+            reset_text = None
+            if reset_ts:
+                reset_dt = datetime.fromtimestamp(reset_ts / 1000, tz=timezone.utc)
+                reset_text = reset_dt.strftime("%Y-%m-%d %H:%M UTC")
+
+            if limit_type == "TIME_LIMIT":
+                results.append(TokenUsage(
+                    provider="zhipuai",
+                    model=f"time-limit ({level})",
+                    input_tokens=current or 0,
+                    output_tokens=0,
+                    total_tokens=current or 0,
+                    cost_usd=None,
+                    period="5h_rolling",
+                    quota_limit=usage,
+                    quota_percentage=percentage,
+                    reset_text=reset_text,
+                ))
+            elif limit_type == "TOKENS_LIMIT":
+                results.append(TokenUsage(
+                    provider="zhipuai",
+                    model=f"tokens-limit ({level})",
+                    input_tokens=0,
+                    output_tokens=0,
+                    total_tokens=0,
+                    cost_usd=None,
+                    period="monthly",
+                    quota_percentage=percentage,
+                    reset_text=reset_text,
+                ))
+
+        return results

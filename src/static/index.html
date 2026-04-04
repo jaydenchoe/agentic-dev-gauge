@@ -118,15 +118,23 @@
     <section class="section section--zhipuai">
       <div class="section__header">
         <span>ZhipuAI</span>
-        <span class="section__badge section__badge--accent" id="zhipuaiPlan">Annual</span>
+        <span class="section__badge section__badge--accent" id="zhipuaiPlan"></span>
       </div>
-      <div class="section__grid section__grid--1col" id="cardZhipuaiBrand">
-        <div class="card card--zhipuai" id="cardZhipuaiQuota">
+      <div class="section__grid" id="cardZhipuaiBrand">
+        <div class="card card--zhipuai" id="cardZhipuaiTime">
           <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiQuota"></div>
-            <span class="bar__label">Quota</span>
-            <span class="bar__detail" id="detailZhipuaiQuota"></span>
-            <span class="bar__value bar__value--muted" id="valZhipuaiQuota">--<span class="bar__unit">%</span></span>
+            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiTime"></div>
+            <span class="bar__label">5h Limit</span>
+            <span class="bar__detail" id="detailZhipuaiTime"></span>
+            <span class="bar__value bar__value--muted" id="valZhipuaiTime">--<span class="bar__unit">%</span></span>
+          </div>
+        </div>
+        <div class="card card--zhipuai" id="cardZhipuaiTokens">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiTokens"></div>
+            <span class="bar__label">Tokens</span>
+            <span class="bar__detail" id="detailZhipuaiTokens"></span>
+            <span class="bar__value bar__value--muted" id="valZhipuaiTokens">--<span class="bar__unit">%</span></span>
           </div>
         </div>
       </div>
