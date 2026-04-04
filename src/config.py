@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     claude_web_cdp_port: int = 9222
     claude_web_interval_sec: float = 300  # 5 minutes
 
-    # Copilot web usage (CDP scraping)
-    copilot_web_interval_sec: float = 300  # 5 minutes
+    # Copilot API usage
+    copilot_api_interval_sec: float = 300  # 5 minutes
 
     # Chrome debug profile for CDP scraping
     chrome_debug_profile_dir: str = "~/.tiny-monitor/chrome-debug-profile"

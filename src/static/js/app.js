@@ -7,8 +7,6 @@ const App = (() => {
   let thresholds = {};
   let claudeDataReceived = false;
   let claudeDisconnectTimer = null;
-  let copilotDataReceived = false;
-  let copilotDisconnectTimer = null;
   const CDP_TIMEOUT_MS = 30000;
 
   function init() {
@@ -17,7 +15,6 @@ const App = (() => {
     connectWebSocket();
     fetchInitialData();
     startCdpTimeout();
-    startCopilotCdpTimeout();
   }
 
   function loadThresholds() {
@@ -78,7 +75,7 @@ const App = (() => {
         fetch('/api/config'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
-        fetch('/api/copilot-web-usage'),
+        fetch('/api/copilot-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -107,7 +104,7 @@ const App = (() => {
 
       if (copilotRes.status === 'fulfilled' && copilotRes.value.ok) {
         const data = await copilotRes.value.json();
-        handleCopilotWeb(data.data);
+        handleCopilotApi(data.data);
       }
     } catch (e) {
       // Server not running yet
@@ -251,30 +248,10 @@ const App = (() => {
     }
   }
 
-  // --- Copilot CDP Timeout ---
+  // --- Copilot API Usage Handler ---
 
-  function startCopilotCdpTimeout() {
-    copilotDisconnectTimer = setTimeout(() => {
-      if (!copilotDataReceived) {
-        const disconnected = document.getElementById('copilotWebDisconnected');
-        if (disconnected) disconnected.style.display = '';
-      }
-    }, CDP_TIMEOUT_MS);
-  }
-
-  // --- Copilot Web Usage Handler ---
-
-  function handleCopilotWeb(data) {
+  function handleCopilotApi(data) {
     if (!data) return;
-
-    copilotDataReceived = true;
-    if (copilotDisconnectTimer) {
-      clearTimeout(copilotDisconnectTimer);
-      copilotDisconnectTimer = null;
-    }
-
-    const disconnected = document.getElementById('copilotWebDisconnected');
-    if (disconnected) disconnected.style.display = 'none';
 
     // Plan name
     const planEl = document.getElementById('copilotPlan');
@@ -282,15 +259,33 @@ const App = (() => {
       planEl.textContent = data.plan.toUpperCase();
     }
 
-    // Premium requests bar
-    if (data.premium_used_percent != null) {
-      const pct = data.premium_used_percent;
-      const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-      updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
+    const quotas = data.quotas || [];
+    for (const q of quotas) {
+      if (q.quota_id === 'premium_interactions') {
+        const pct = q.percent_used;
+        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+        updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
 
-      const detailEl = document.getElementById('detailCopilotPremium');
-      if (detailEl && data.reset_text) {
-        detailEl.textContent = data.reset_text;
+        const detailEl = document.getElementById('detailCopilotPremium');
+        if (detailEl) {
+          const used = q.entitlement - q.remaining;
+          let text = `${used} / ${q.entitlement}`;
+          if (data.reset_date) text += ` · Resets ${data.reset_date}`;
+          detailEl.textContent = text;
+        }
+      } else if (q.quota_id === 'completions') {
+        if (q.unlimited) {
+          const fillEl = document.getElementById('fillCopilotCompletions');
+          const valEl = document.getElementById('valCopilotCompletions');
+          if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill'; }
+          if (valEl) { valEl.innerHTML = '0<span class="bar__unit">%</span>'; valEl.className = 'bar__value'; }
+          const detailEl = document.getElementById('detailCopilotCompletions');
+          if (detailEl) detailEl.textContent = 'unlimited';
+        } else {
+          const pct = q.percent_used;
+          const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+          updateBar('fillCopilotCompletions', 'valCopilotCompletions', 'cardCopilotCompletions', pct, level);
+        }
       }
     }
   }
@@ -305,9 +300,9 @@ const App = (() => {
       handleClaudeWeb(data.claude_web);
     }
 
-    // Forward nested copilot_web data
-    if (data.copilot_web) {
-      handleCopilotWeb(data.copilot_web);
+    // Forward nested copilot_api data
+    if (data.copilot_api) {
+      handleCopilotApi(data.copilot_api);
     }
 
     // Process per-provider token usages

@@ -151,13 +151,13 @@ async def claude_web_usage(request: Request) -> Any:
     return {"data": data.to_dict()}
 
 
-@router.get("/copilot-web-usage")
-async def copilot_web_usage(request: Request) -> Any:
-    """Return GitHub Copilot premium requests usage scraped via CDP."""
+@router.get("/copilot-usage")
+async def copilot_usage(request: Request) -> Any:
+    """Return GitHub Copilot quota from internal API."""
     svc = request.app.state.usage_service
-    data = svc.copilot_web_latest
+    data = svc.copilot_api_latest
     if data is None:
-        return {"error": "no data yet (CDP Chrome running? GitHub logged in?)", "data": None}
+        return {"error": "no data yet (gh CLI authenticated?)", "data": None}
     return {"data": data.to_dict()}
 
 
