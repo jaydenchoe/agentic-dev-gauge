@@ -7,6 +7,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
 from src.adapters.ai_usage.claude_web_usage import ClaudeWebUsage, fetch_claude_web_usage
 from src.adapters.ai_usage.copilot_api_usage import CopilotApiUsage, fetch_copilot_api_usage
@@ -15,6 +16,7 @@ from src.core.models import TokenUsage, UsageSnapshot
 from src.core.ports.usage import UsagePort
 
 logger = logging.getLogger(__name__)
+_DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 
 
 def _time_ago(ts: float) -> str:
@@ -24,6 +26,17 @@ def _time_ago(ts: float) -> str:
     if diff < 3600:
         return f"{diff // 60}m ago"
     return f"{diff // 3600}h ago"
+
+
+def _parse_ollama_endpoint(ollama_base_url: str) -> tuple[str, int]:
+    candidate = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip()
+    if "://" not in candidate:
+        candidate = f"http://{candidate}"
+
+    parsed = urlparse(candidate)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 11434
+    return host, port
 
 
 class UsageService:
@@ -37,6 +50,7 @@ class UsageService:
         copilot_api_interval: float = 300.0,
         ollama_status_interval: float = 60.0,
         ollama_benchmark_interval: float = 300.0,
+        ollama_base_url: str = _DEFAULT_OLLAMA_BASE_URL,
     ) -> None:
         self._adapters = adapters
         self._api_keys = api_keys
@@ -59,6 +73,8 @@ class UsageService:
         self._ollama_status_task: Optional[asyncio.Task] = None
         self._ollama_benchmark_task: Optional[asyncio.Task] = None
         self._ollama_last_benchmark_ts: float = 0
+        self._ollama_base_url = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip() or _DEFAULT_OLLAMA_BASE_URL
+        self._ollama_host, self._ollama_port = _parse_ollama_endpoint(self._ollama_base_url)
 
     @property
     def latest(self) -> Optional[UsageSnapshot]:
@@ -78,6 +94,12 @@ class UsageService:
 
     def update_api_keys(self, api_keys: dict[str, str]) -> None:
         self._api_keys = api_keys
+
+    def update_ollama_base_url(self, ollama_base_url: str) -> None:
+        self._ollama_base_url = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip() or _DEFAULT_OLLAMA_BASE_URL
+        self._ollama_host, self._ollama_port = _parse_ollama_endpoint(self._ollama_base_url)
+        if self._ollama_latest:
+            self._ollama_latest.base_url = self._ollama_base_url
 
     async def collect_once(self) -> UsageSnapshot:
         all_usages: list[TokenUsage] = []
@@ -142,8 +164,9 @@ class UsageService:
     async def _ollama_status_loop(self) -> None:
         while True:
             try:
-                result = await fetch_ollama_status()
+                result = await fetch_ollama_status(self._ollama_host, self._ollama_port)
                 if result:
+                    result.base_url = self._ollama_base_url
                     # Preserve benchmark data from previous status
                     if self._ollama_latest and self._ollama_latest.tok_per_sec:
                         result.tok_per_sec = self._ollama_latest.tok_per_sec
@@ -158,10 +181,11 @@ class UsageService:
     async def _ollama_benchmark_loop(self) -> None:
         while True:
             try:
-                tks = await benchmark_ollama()
+                tks = await benchmark_ollama(self._ollama_host, self._ollama_port)
                 if tks is not None:
                     self._ollama_last_benchmark_ts = time.time()
                     if self._ollama_latest:
+                        self._ollama_latest.base_url = self._ollama_base_url
                         self._ollama_latest.tok_per_sec = tks
                         self._ollama_latest.benchmark_ago = "just now"
                     logger.info("Ollama benchmark: %.1f tok/s", tks)

@@ -30,3 +30,13 @@ _workspace/      # Architecture docs, QA reports
 ## Behavior Rules (Project-Specific)
 - **Trust dashboard values**: When user asks about a dashboard value, do not contradict it with raw CLI tool output (df, free, etc.). Explain how our code calculates the value first.
 - **Do not pkill debug Chrome**: Debug Chrome runs as a separate instance. Never kill Chrome processes with pkill.
+
+## Chrome Launch
+- To launch a **visible** Chrome window with a specific profile (e.g. for login), use the binary directly — `open -a` just opens a tab in the already-running Chrome:
+  ```
+  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+    --user-data-dir="$HOME/.tiny-monitor/chrome-debug-profile" \
+    --remote-debugging-port=9222 \
+    "https://target-url.com" &
+  ```
+- Debug profile: `~/.tiny-monitor/chrome-debug-profile`, CDP port: `9222`

@@ -18,6 +18,7 @@ _DEFAULT_THRESHOLDS = [
     {"metric": "token_cost", "warning": 10.0, "critical": 50.0},
     {"metric": "llm_usage_percent", "warning": 80, "critical": 90},
 ]
+_DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 
 
 class Settings(BaseSettings):
@@ -43,6 +44,9 @@ class Settings(BaseSettings):
     # Copilot API usage
     copilot_api_interval_sec: float = 300  # 5 minutes
 
+    # Ollama local/remote endpoint
+    ollama_base_url: str = _DEFAULT_OLLAMA_BASE_URL
+
     # Chrome debug profile for CDP scraping
     chrome_debug_profile_dir: str = "~/.tiny-monitor/chrome-debug-profile"
     chrome_debug_port: int = 9222
@@ -61,6 +65,13 @@ class Settings(BaseSettings):
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
+
+    @field_validator("ollama_base_url", mode="before")
+    @classmethod
+    def default_ollama_base_url(cls, v: object) -> str:
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        return _DEFAULT_OLLAMA_BASE_URL
 
     # Thresholds
     thresholds: list[ThresholdConfig] = [

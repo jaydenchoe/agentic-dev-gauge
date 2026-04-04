@@ -23,6 +23,7 @@ class OllamaUsage:
     parameter_size: Optional[str] = None  # e.g. "36.0B"
     vram_gb: Optional[float] = None  # VRAM usage in GB
     vram_percent: Optional[float] = None  # VRAM as % of total unified memory
+    base_url: Optional[str] = None
     tok_per_sec: Optional[float] = None  # benchmark result
     benchmark_ago: Optional[str] = None  # "2m ago"
     available: bool = False
@@ -33,6 +34,7 @@ class OllamaUsage:
             "parameter_size": self.parameter_size,
             "vram_gb": self.vram_gb,
             "vram_percent": self.vram_percent,
+            "base_url": self.base_url,
             "tok_per_sec": self.tok_per_sec,
             "benchmark_ago": self.benchmark_ago,
             "available": self.available,

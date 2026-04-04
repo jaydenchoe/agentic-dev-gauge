@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api")
 
 _start_time = time.time()
 _ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
+_DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 
 
 def _persist_env_updates(env_updates: dict[str, str]) -> None:
@@ -89,6 +90,7 @@ async def alerts(request: Request) -> list:
 
 
 @router.get("/config")
+@router.get("/settings")
 async def get_config(request: Request) -> dict:
     settings = request.app.state.settings
     providers = [
@@ -100,11 +102,13 @@ async def get_config(request: Request) -> dict:
         "thresholds": [_to_dict(t) for t in settings.thresholds],
         "providers": providers,
         "gateway_url": settings.openclaw_gateway_url or "",
+        "ollama_base_url": settings.ollama_base_url or _DEFAULT_OLLAMA_BASE_URL,
         "gateway_configured": bool(settings.openclaw_api_key),
     }
 
 
 @router.post("/config")
+@router.post("/settings")
 async def update_config(request: Request) -> dict:
     body = await request.json()
     settings = request.app.state.settings
@@ -157,6 +161,10 @@ async def update_config(request: Request) -> dict:
     if "gateway_key" in body:
         settings.openclaw_api_key = body["gateway_key"] or None
         env_updates["OPENCLAW_API_KEY"] = settings.openclaw_api_key or ""
+    if "ollama_base_url" in body:
+        settings.ollama_base_url = body["ollama_base_url"] or _DEFAULT_OLLAMA_BASE_URL
+        usage_svc.update_ollama_base_url(settings.ollama_base_url)
+        env_updates["OLLAMA_BASE_URL"] = settings.ollama_base_url
 
     # Persist updated env-backed settings so they survive restarts.
     _persist_env_updates(env_updates)

@@ -9,6 +9,7 @@ const App = (() => {
   let claudeDisconnectTimer = null;
   const codexUsageState = {};
   const CDP_TIMEOUT_MS = 30000;
+  const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 
   function init() {
     Settings.init();
@@ -73,7 +74,7 @@ const App = (() => {
     try {
       const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes] = await Promise.allSettled([
         fetch('/api/metrics'),
-        fetch('/api/config'),
+        fetch('/api/settings'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
         fetch('/api/copilot-usage'),
@@ -91,6 +92,10 @@ const App = (() => {
           for (const t of config.thresholds) {
             thresholds[t.metric] = { warning: t.warning, critical: t.critical };
           }
+        }
+        const ollamaInput = document.getElementById('ollamaBaseUrl');
+        if (ollamaInput) {
+          ollamaInput.value = config.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
         }
       }
 
@@ -427,18 +432,19 @@ const App = (() => {
     const fillEl = document.getElementById('fillOllama');
     const valEl = document.getElementById('valOllama');
     const detailEl = document.getElementById('detailOllama');
+    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
 
     if (!data.available) {
       if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
       if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
+      if (detailEl) detailEl.textContent = baseUrlLabel;
       return;
     }
 
     if (!data.model) {
       if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
       if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
+      if (detailEl) detailEl.textContent = baseUrlLabel;
       return;
     }
 
@@ -463,9 +469,24 @@ const App = (() => {
     // Detail: model name + VRAM GB (%) + benchmark time
     if (detailEl) {
       let parts = [data.model];
+      if (baseUrlLabel) parts.push(baseUrlLabel);
       if (data.vram_gb) parts.push(data.vram_gb + ' GB (' + Math.round(vramPct) + '%)');
       if (data.benchmark_ago) parts.push(data.benchmark_ago);
       detailEl.textContent = parts.join(' · ');
+    }
+  }
+
+  function formatOllamaBaseUrl(baseUrl) {
+    if (!baseUrl) return '';
+    try {
+      const parsed = new URL(baseUrl.includes('://') ? baseUrl : `http://${baseUrl}`);
+      if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') {
+        return 'local';
+      }
+      const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+      return `${parsed.hostname}:${port}`;
+    } catch (e) {
+      return baseUrl;
     }
   }
 
