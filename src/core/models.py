@@ -64,6 +64,7 @@ class TokenUsage:
     total_tokens: int
     cost_usd: Optional[float] = None
     period: str = "current_month"
+    quota_limit: Optional[int] = None
 
 
 @dataclass

@@ -41,6 +41,7 @@ const App = (() => {
     ws.on('close', () => updateConnectionStatus('reconnecting'));
     ws.on('system_metrics', handleSystemMetrics);
     ws.on('claude_web', handleClaudeWeb);
+    ws.on('usage_update', handleUsageUpdate);
 
     ws.connect();
   }
@@ -65,10 +66,11 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/config'),
         fetch('/api/claude-web-usage'),
+        fetch('/api/usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -89,30 +91,43 @@ const App = (() => {
         const data = await cwRes.value.json();
         handleClaudeWeb(data.data);
       }
+
+      if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
+        const data = await usageRes.value.json();
+        handleUsageUpdate(data);
+      }
     } catch (e) {
       // Server not running yet
     }
   }
 
-  // --- System Metrics Handler ---
+  // --- Bar Update ---
 
-  function updateSysBar(barId, valId, cardId, pct, level) {
-    const bar = document.getElementById(barId);
+  function updateBar(fillId, valId, cardId, pct, level) {
+    const fill = document.getElementById(fillId);
     const val = document.getElementById(valId);
     const card = document.getElementById(cardId);
-    if (bar) {
-      bar.style.width = Math.min(pct, 100) + '%';
-      bar.className = 'sys-bar__fill';
-      if (level === 'warning') bar.classList.add('sys-bar__fill--warning');
-      if (level === 'critical') bar.classList.add('sys-bar__fill--critical');
+
+    if (fill) {
+      fill.style.width = Math.min(pct, 100) + '%';
+      fill.className = 'bar__fill';
+      if (level === 'warning') fill.classList.add('bar__fill--warning');
+      if (level === 'critical') fill.classList.add('bar__fill--critical');
     }
-    if (val) val.textContent = Math.round(pct) + '%';
+    if (val) {
+      val.innerHTML = `${Math.round(pct)}<span class="bar__unit">%</span>`;
+      val.className = 'bar__value';
+      if (level === 'warning') val.classList.add('bar__value--warning');
+      if (level === 'critical') val.classList.add('bar__value--critical');
+    }
     if (card) {
-      card.className = card.className.replace(/\s*sys-bar--(warning|critical)/g, '');
-      if (level === 'warning') card.classList.add('sys-bar--warning');
-      if (level === 'critical') card.classList.add('sys-bar--critical');
+      card.className = card.className.replace(/\s*card--(warning|critical)/g, '');
+      if (level === 'warning') card.classList.add('card--warning');
+      if (level === 'critical') card.classList.add('card--critical');
     }
   }
+
+  // --- System Metrics Handler ---
 
   function handleSystemMetrics(data) {
     if (!data) return;
@@ -124,7 +139,7 @@ const App = (() => {
       const val = data.cpu.usage_percent;
       const th = t.cpu_percent || { warning: 80, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barCpu', 'valCpu', 'cardCpu', val, level);
+      updateBar('fillCpu', 'valCpu', 'cardCpu', val, level);
     }
 
     // Memory
@@ -132,7 +147,7 @@ const App = (() => {
       const val = data.memory.usage_percent;
       const th = t.memory_percent || { warning: 80, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barMemory', 'valMemory', 'cardMemory', val, level);
+      updateBar('fillMemory', 'valMemory', 'cardMemory', val, level);
 
       const detail = document.getElementById('memDetail');
       if (detail) {
@@ -145,26 +160,11 @@ const App = (() => {
       const val = data.disk.usage_percent;
       const th = t.disk_percent || { warning: 85, critical: 95 };
       const level = Charts.getLevel(val, th.warning, th.critical);
-      updateSysBar('barDisk', 'valDisk', 'cardDisk', val, level);
+      updateBar('fillDisk', 'valDisk', 'cardDisk', val, level);
 
       const detail = document.getElementById('diskDetail');
       if (detail) {
         detail.textContent = `${data.disk.used_gb.toFixed(0)} / ${data.disk.total_gb.toFixed(0)} GB`;
-      }
-    }
-
-    // GPU (optional, show bar if present)
-    if (data.gpu) {
-      const gpuBar = document.getElementById('cardGpu');
-      if (gpuBar) gpuBar.style.display = '';
-
-      const val = data.gpu.usage_percent;
-      const level = Charts.getLevel(val, 80, 95);
-      updateSysBar('barGpu', 'valGpu', 'cardGpu', val, level);
-
-      const detail = document.getElementById('gpuDetail');
-      if (detail) {
-        detail.textContent = `${(data.gpu.memory_used_mb / 1024).toFixed(1)} / ${(data.gpu.memory_total_mb / 1024).toFixed(1)} GB`;
       }
     }
 
@@ -181,9 +181,7 @@ const App = (() => {
     claudeDisconnectTimer = setTimeout(() => {
       if (!claudeDataReceived) {
         const disconnected = document.getElementById('claudeWebDisconnected');
-        const meters = document.getElementById('claudeWebMeters');
-        disconnected.style.display = '';
-        meters.style.display = 'none';
+        if (disconnected) disconnected.style.display = '';
       }
     }, CDP_TIMEOUT_MS);
   }
@@ -191,9 +189,6 @@ const App = (() => {
   // --- Claude Web Usage Handler ---
 
   function handleClaudeWeb(data) {
-    const disconnected = document.getElementById('claudeWebDisconnected');
-    const meters = document.getElementById('claudeWebMeters');
-
     if (!data) return;
 
     claudeDataReceived = true;
@@ -202,46 +197,100 @@ const App = (() => {
       claudeDisconnectTimer = null;
     }
 
-    disconnected.style.display = 'none';
-    meters.style.display = '';
+    const disconnected = document.getElementById('claudeWebDisconnected');
+    if (disconnected) disconnected.style.display = 'none';
 
-    // Plan name in title
+    // Plan name
     const planEl = document.getElementById('claudeWebPlan');
-    const planMap = {'맥스 플랜': 'MAX PLAN 5X', '프로 플랜': 'PRO PLAN', '팀 플랜': 'TEAM PLAN', '무료 플랜': 'FREE PLAN'};
-    const planName = planMap[data.plan] || data.plan;
-    planEl.textContent = planName ? `(${planName})` : '';
+    if (planEl) {
+      const planMap = {'맥스 플랜': 'MAX 5X', '프로 플랜': 'PRO', '팀 플랜': 'TEAM', '무료 플랜': 'FREE'};
+      const planName = planMap[data.plan] || data.plan;
+      planEl.textContent = planName || '';
+    }
 
-    // Build sys-bar style meters
-    meters.innerHTML = '';
-
+    // Update Claude bars
     const items = [
-      { label: 'Session', pct: data.session?.used_percent, reset: data.session?.reset_text },
-      { label: 'Weekly All', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
-      { label: 'Sonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
+      { fill: 'fillClaudeSession', val: 'valClaudeSession', card: 'cardClaudeSession', detail: 'detailClaudeSession', pct: data.session?.used_percent, reset: data.session?.reset_text },
+      { fill: 'fillClaudeWeekly', val: 'valClaudeWeekly', card: 'cardClaudeWeekly', detail: 'detailClaudeWeekly', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
+      { fill: 'fillClaudeSonnet', val: 'valClaudeSonnet', card: 'cardClaudeSonnet', detail: 'detailClaudeSonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
     ];
 
     for (const item of items) {
       if (item.pct == null) continue;
       const level = Charts.getLevel(item.pct, 60, 85);
-      const fillClass = level !== 'normal' ? `sys-bar__fill--${level}` : '';
-      const barClass = level !== 'normal' ? `sys-bar--${level}` : '';
+      updateBar(item.fill, item.val, item.card, item.pct, level);
 
-      const row = document.createElement('div');
-      row.className = `sys-bar ${barClass}`;
-      row.innerHTML = `
-        <span class="sys-bar__label">${escapeHtml(item.label)}</span>
-        <div class="sys-bar__track"><div class="sys-bar__fill ${fillClass}" style="width:${Math.min(item.pct, 100)}%"></div></div>
-        <span class="sys-bar__value">${Math.round(item.pct)}%</span>
-        ${item.reset ? `<span class="sys-bar__detail">${escapeHtml(item.reset)}</span>` : ''}
-      `;
-      meters.appendChild(row);
+      const detailEl = document.getElementById(item.detail);
+      if (detailEl && item.reset) {
+        detailEl.textContent = item.reset;
+      }
+    }
+
+    // Extra usage
+    const extraEl = document.getElementById('valClaudeExtra');
+    if (extraEl && data.extra_usage) {
+      const used = data.extra_usage.used_usd;
+      const limit = data.extra_usage.limit_usd;
+      if (used != null && limit != null) {
+        extraEl.textContent = `$${used} / $${limit}`;
+        extraEl.classList.remove('bar__value--muted');
+      }
     }
   }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  // --- Usage Update Handler (WebSocket "usage_update" channel) ---
+
+  function handleUsageUpdate(data) {
+    if (!data) return;
+
+    // Forward nested claude_web data to the existing handler
+    if (data.claude_web) {
+      handleClaudeWeb(data.claude_web);
+    }
+
+    // Process per-provider token usages
+    const usages = data.usages || [];
+    for (const usage of usages) {
+      if (usage.provider === 'zhipuai') {
+        handleZhipuaiUsage(usage);
+      }
+    }
+  }
+
+  // --- ZhipuAI Usage Handler ---
+
+  function handleZhipuaiUsage(usage) {
+    if (!usage) return;
+
+    const used = usage.total_tokens || 0;
+    const limit = usage.quota_limit;
+
+    const planEl = document.getElementById('zhipuaiPlan');
+    if (planEl) {
+      planEl.textContent = 'Annual';
+    }
+
+    if (limit && limit > 0) {
+      const pct = Math.min(Math.round(used / limit * 100), 100);
+      const level = Charts.getLevel(pct, 60, 85);
+      updateBar('fillZhipuaiQuota', 'valZhipuaiQuota', 'cardZhipuaiQuota', pct, level);
+
+      const detailEl = document.getElementById('detailZhipuaiQuota');
+      if (detailEl) {
+        detailEl.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`;
+      }
+    } else {
+      const valEl = document.getElementById('valZhipuaiQuota');
+      if (valEl) {
+        valEl.innerHTML = `${used.toLocaleString()}<span class="bar__unit"> tok</span>`;
+        valEl.className = 'bar__value';
+      }
+      const fillEl = document.getElementById('fillZhipuaiQuota');
+      if (fillEl) {
+        fillEl.style.width = used > 0 ? '100%' : '0%';
+        fillEl.className = 'bar__fill';
+      }
+    }
   }
 
   return { init, onConfigSaved };

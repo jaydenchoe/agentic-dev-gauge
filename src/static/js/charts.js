@@ -3,35 +3,35 @@
    ============================================ */
 
 const Charts = (() => {
-  const CIRCUMFERENCE = 2 * Math.PI * 50; // r=50
 
   /**
-   * Update an SVG circle gauge.
-   * @param {string} gaugeId - The gauge container element ID
+   * Update a horizontal progress bar.
+   * @param {string} barId - The bar container element ID
    * @param {number} percent - 0-100
    * @param {string} level - 'normal' | 'warning' | 'critical'
    */
-  function updateGauge(gaugeId, percent, level) {
-    const el = document.getElementById(gaugeId);
+  function updateBar(barId, percent, level) {
+    const el = document.getElementById(barId);
     if (!el) return;
 
-    const fill = el.querySelector('.gauge__fill');
-    const valueEl = el.querySelector('.gauge__value');
+    const fill = el.querySelector('.bar__fill');
+    const valueEl = el.querySelector('.bar__value');
 
     const clamped = Math.max(0, Math.min(100, percent));
-    const offset = CIRCUMFERENCE - (clamped / 100) * CIRCUMFERENCE;
 
-    fill.style.strokeDasharray = CIRCUMFERENCE;
-    fill.style.strokeDashoffset = offset;
+    if (fill) {
+      fill.style.width = clamped + '%';
+      fill.className = 'bar__fill';
+      if (level === 'warning') fill.classList.add('bar__fill--warning');
+      if (level === 'critical') fill.classList.add('bar__fill--critical');
+    }
 
-    const colors = {
-      normal: '#22c55e',
-      warning: '#f59e0b',
-      critical: '#ef4444',
-    };
-    fill.style.stroke = colors[level] || colors.normal;
-
-    valueEl.innerHTML = `${Math.round(clamped)}<span class="gauge__unit">%</span>`;
+    if (valueEl) {
+      valueEl.innerHTML = `${Math.round(clamped)}<span class="bar__unit">%</span>`;
+      valueEl.className = 'bar__value';
+      if (level === 'warning') valueEl.classList.add('bar__value--warning');
+      if (level === 'critical') valueEl.classList.add('bar__value--critical');
+    }
   }
 
   /**
@@ -170,7 +170,7 @@ const Charts = (() => {
   }
 
   return {
-    updateGauge,
+    updateBar,
     updateCardState,
     pushSparkline,
     formatBytes,
