@@ -84,11 +84,7 @@ def _build_usage_adapters() -> list[UsagePort]:
     """Discover available AI usage adapters (best-effort)."""
     adapters: list[UsagePort] = []
     adapter_classes: list[tuple[str, str]] = [
-        ("src.adapters.ai_usage.anthropic_adapter", "AnthropicUsageAdapter"),
-        ("src.adapters.ai_usage.openai_adapter", "OpenAIUsageAdapter"),
-        ("src.adapters.ai_usage.github_adapter", "CopilotUsageAdapter"),
         ("src.adapters.ai_usage.zhipuai_adapter", "ZhipuAIUsageAdapter"),
-        ("src.adapters.ai_usage.gemini_adapter", "GeminiUsageAdapter"),
     ]
     for module_path, class_name in adapter_classes:
         try:
@@ -139,11 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Build services
     monitor_svc = MonitorService(metrics_adapter, interval=settings.metrics_interval_sec)
     api_keys = {
-        "anthropic": settings.anthropic_api_key or "",
-        "openai": settings.openai_api_key or "",
-        "github": settings.github_token or "",
         "zhipuai": settings.zhipuai_api_key or "",
-        "gemini": settings.gemini_api_key or "",
     }
     usage_svc = UsageService(
         usage_adapters, api_keys,

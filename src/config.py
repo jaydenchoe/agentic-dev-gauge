@@ -29,12 +29,7 @@ class Settings(BaseSettings):
     metrics_backend: str = "auto"  # auto | psutil | macmon
 
     # AI Usage API Keys (all optional)
-    anthropic_api_key: Optional[str] = None          # Admin key for usage reports
-    anthropic_api_key_regular: Optional[str] = None  # Regular key for rate limit checks
-    openai_api_key: Optional[str] = None
-    github_token: Optional[str] = None
     zhipuai_api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
 
     # Usage polling
     usage_interval_sec: float = 60
@@ -51,21 +46,10 @@ class Settings(BaseSettings):
     chrome_debug_port: int = 9222
     chrome_debug_auto_launch: bool = True  # auto-launch debug Chrome on startup
 
-    # Monthly budget cap (USD) — used to show usage as % of budget
-    monthly_budget_usd: Optional[float] = None
-
-    # Anthropic plan session limit (tokens, 5h rolling window)
-    # Community estimates: Pro ~44000, Max5x ~88000, Max20x ~220000
-    anthropic_session_limit: Optional[int] = None
-    # Anthropic weekly limit (tokens) — all models
-    anthropic_weekly_limit: Optional[int] = None
 
     @field_validator(
-        "anthropic_api_key", "anthropic_api_key_regular",
-        "openai_api_key", "github_token", "zhipuai_api_key", "gemini_api_key",
+        "zhipuai_api_key",
         "openclaw_gateway_url", "openclaw_api_key",
-        "monthly_budget_usd",
-        "anthropic_session_limit", "anthropic_weekly_limit",
         mode="before",
     )
     @classmethod

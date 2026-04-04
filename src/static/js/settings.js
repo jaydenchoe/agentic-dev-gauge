@@ -7,12 +7,7 @@ const Settings = (() => {
   let isOpen = false;
 
   const API_KEY_FIELDS = [
-    { id: 'keyAnthropic', key: 'anthropic_api_key', provider: 'anthropic' },
-    { id: 'keyAnthropicRegular', key: 'anthropic_api_key_regular', provider: 'anthropic_regular' },
-    { id: 'keyOpenai', key: 'openai_api_key', provider: 'openai' },
-    { id: 'keyGithub', key: 'github_token', provider: 'github' },
     { id: 'keyZhipuai', key: 'zhipuai_api_key', provider: 'zhipuai' },
-    { id: 'keyGemini', key: 'gemini_api_key', provider: 'gemini' },
   ];
 
   function init() {
@@ -71,19 +66,6 @@ const Settings = (() => {
         }
       }
 
-      // Load plan limits
-      if (data.anthropic_session_limit) {
-        document.getElementById('sessionLimit').value = data.anthropic_session_limit;
-      }
-      if (data.anthropic_weekly_limit) {
-        document.getElementById('weeklyLimit').value = data.anthropic_weekly_limit;
-      }
-
-      // Load budget
-      if (data.monthly_budget_usd) {
-        document.getElementById('monthlyBudget').value = data.monthly_budget_usd;
-      }
-
       // Load gateway
       if (data.gateway_url) {
         document.getElementById('gatewayUrl').value = data.gateway_url;
@@ -115,16 +97,6 @@ const Settings = (() => {
         config[field.key] = val;
       }
     }
-
-    // Plan limits
-    const sessionVal = document.getElementById('sessionLimit').value.trim();
-    if (sessionVal) config.anthropic_session_limit = parseInt(sessionVal);
-    const weeklyVal = document.getElementById('weeklyLimit').value.trim();
-    if (weeklyVal) config.anthropic_weekly_limit = parseInt(weeklyVal);
-
-    // Budget
-    const budgetVal = document.getElementById('monthlyBudget').value.trim();
-    if (budgetVal) config.monthly_budget_usd = parseFloat(budgetVal);
 
     // Gateway settings
     const gwUrl = document.getElementById('gatewayUrl').value.trim();
