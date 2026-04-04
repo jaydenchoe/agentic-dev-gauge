@@ -150,6 +150,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         interval=settings.usage_interval_sec,
         claude_web_cdp_port=settings.claude_web_cdp_port,
         claude_web_interval=settings.claude_web_interval_sec,
+        copilot_web_interval=settings.copilot_web_interval_sec,
     )
     alert_svc = AlertService(settings.thresholds, notifier)
 
