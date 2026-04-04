@@ -266,6 +266,12 @@ def _parse_usage_text(text: str) -> Optional[ClaudeWebUsage]:
         logger.warning("Failed to parse usage from page text")
         return None
 
+    # Translate Korean reset texts to English
+    usage.session_reset_text = _translate_reset_text(usage.session_reset_text) if usage.session_reset_text else None
+    usage.weekly_all_reset_text = _translate_reset_text(usage.weekly_all_reset_text) if usage.weekly_all_reset_text else None
+    usage.weekly_sonnet_reset_text = _translate_reset_text(usage.weekly_sonnet_reset_text) if usage.weekly_sonnet_reset_text else None
+    usage.extra_reset_text = _translate_reset_text(usage.extra_reset_text) if usage.extra_reset_text else None
+
     return usage
 
 
@@ -275,6 +281,39 @@ def _find_nearby(lines: list[str], idx: int, keyword: str, window: int = 5) -> O
         if keyword in lines[j]:
             return lines[j]
     return None
+
+
+def _translate_reset_text(text: str) -> str:
+    """Translate Korean reset text to English."""
+    if not text:
+        return text
+
+    # "4시간 52분 후 재설정" → "Resets in 4h 52m"
+    m = re.search(r"(\d+)시간\s*(\d+)분\s*후\s*재설정", text)
+    if m:
+        return f"Resets in {m.group(1)}h {m.group(2)}m"
+
+    # "52분 후 재설정" → "Resets in 52m"
+    m = re.search(r"(\d+)분\s*후\s*재설정", text)
+    if m:
+        return f"Resets in {m.group(1)}m"
+
+    # "(토) 오전 9:00에 재설정" → "Resets Sat 9:00 AM"
+    day_map = {"월": "Mon", "화": "Tue", "수": "Wed", "목": "Thu", "금": "Fri", "토": "Sat", "일": "Sun"}
+    m = re.search(r"\(([월화수목금토일])\)\s*(오전|오후)\s*(\d+:\d+)에?\s*재설정", text)
+    if m:
+        day = day_map.get(m.group(1), m.group(1))
+        period = "AM" if m.group(2) == "오전" else "PM"
+        return f"Resets {day} {m.group(3)} {period}"
+
+    # "오전/오후 X:XX에 재설정" (no day)
+    m = re.search(r"(오전|오후)\s*(\d+:\d+)에?\s*재설정", text)
+    if m:
+        period = "AM" if m.group(1) == "오전" else "PM"
+        return f"Resets {m.group(2)} {period}"
+
+    # Fallback: return as-is if no pattern matched
+    return text
 
 
 def _extract_percent(text: str) -> Optional[float]:
