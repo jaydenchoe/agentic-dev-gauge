@@ -110,16 +110,20 @@ class UsageService:
             await asyncio.sleep(self._interval)
 
     async def _claude_web_loop(self) -> None:
+        retry_interval = 15  # Fast retry until first success
         while True:
             try:
                 result = await fetch_claude_web_usage(cdp_port=self._cdp_port)
                 if result:
                     self._claude_web_latest = result
+                    retry_interval = self._claude_web_interval  # Switch to normal interval
                     logger.info("Claude web usage: session=%s%%, weekly=%s%%",
                                 result.session_used_percent, result.weekly_all_used_percent)
+                else:
+                    logger.warning("Claude web usage returned None, retrying in %ds", retry_interval)
             except Exception:
                 logger.exception("Claude web usage collection error")
-            await asyncio.sleep(self._claude_web_interval)
+            await asyncio.sleep(retry_interval)
 
     async def _copilot_api_loop(self) -> None:
         while True:
