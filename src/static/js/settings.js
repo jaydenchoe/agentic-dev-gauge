@@ -7,6 +7,7 @@ const Settings = (() => {
   let isOpen = false;
 
   const API_KEY_FIELDS = [
+    { id: 'keyCodex', key: 'codex_api_key', provider: 'codex' },
     { id: 'keyZhipuai', key: 'zhipuai_api_key', provider: 'zhipuai' },
   ];
 

@@ -39,6 +39,7 @@ def _persist_to_env(settings: Any) -> None:
 
     # Only persist user-changeable settings (keys, thresholds, gateway)
     env_map = {
+        "CODEX_API_KEY": settings.codex_api_key or "",
         "ZHIPUAI_API_KEY": settings.zhipuai_api_key or "",
         "THRESHOLDS": json.dumps(
             [dataclasses.asdict(t) for t in settings.thresholds]
@@ -95,6 +96,7 @@ async def alerts(request: Request) -> list:
 async def get_config(request: Request) -> dict:
     settings = request.app.state.settings
     providers = [
+        {"name": "codex", "configured": bool(settings.codex_api_key)},
         {"name": "zhipuai", "configured": bool(settings.zhipuai_api_key)},
     ]
 
@@ -112,6 +114,7 @@ async def update_config(request: Request) -> dict:
     settings = request.app.state.settings
     alert_svc = request.app.state.alert_service
     usage_svc = request.app.state.usage_service
+    usage_keys_updated = False
 
     if "thresholds" in body:
         from src.core.models import ThresholdConfig
@@ -121,9 +124,17 @@ async def update_config(request: Request) -> dict:
         alert_svc.update_thresholds(new_thresholds)
 
     # API key updates
+    if "codex_api_key" in body:
+        settings.codex_api_key = body["codex_api_key"] or None
+        usage_keys_updated = True
+
     if "zhipuai_api_key" in body:
         settings.zhipuai_api_key = body["zhipuai_api_key"] or None
+        usage_keys_updated = True
+
+    if usage_keys_updated:
         usage_svc.update_api_keys({
+            "codex": settings.codex_api_key or "",
             "zhipuai": settings.zhipuai_api_key or "",
         })
         import asyncio

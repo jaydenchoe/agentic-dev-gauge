@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     metrics_backend: str = "auto"  # auto | psutil | macmon
 
     # AI Usage API Keys (all optional)
+    codex_api_key: Optional[str] = None
     zhipuai_api_key: Optional[str] = None
 
     # Usage polling
@@ -51,6 +52,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "zhipuai_api_key",
+        "codex_api_key",
         "openclaw_gateway_url", "openclaw_api_key",
         mode="before",
     )
