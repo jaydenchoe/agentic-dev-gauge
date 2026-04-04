@@ -256,7 +256,8 @@ const App = (() => {
     // Plan name
     const planEl = document.getElementById('copilotPlan');
     if (planEl && data.plan) {
-      planEl.textContent = data.plan.toUpperCase();
+      const planMap = { individual: 'PRO', business: 'BUSINESS', enterprise: 'ENTERPRISE' };
+      planEl.textContent = planMap[data.plan] || data.plan.toUpperCase();
     }
 
     const quotas = data.quotas || [];
