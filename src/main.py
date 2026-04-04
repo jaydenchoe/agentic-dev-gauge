@@ -25,7 +25,7 @@ from src.config import Settings
 from src.core.ports.metrics import MetricsPort
 from src.core.ports.notification import NotificationPort
 from src.core.ports.usage import UsagePort
-from src.chrome_launcher import launch_debug_chrome, shutdown_debug_chrome
+from src.chrome_launcher import launch_debug_chrome, launch_dashboard_app, shutdown_debug_chrome
 from src.services.alert_service import AlertService
 from src.services.monitor_service import MonitorService
 from src.services.usage_service import UsageService
@@ -154,6 +154,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     monitor_svc.start()
     usage_svc.start()
     broadcast_task = asyncio.create_task(run_broadcast_loop(app))
+
+    # Launch dashboard in app mode (no address bar)
+    dashboard_proc = None
+    if settings.dashboard_app_auto_launch:
+        dashboard_proc = launch_dashboard_app(f"http://localhost:{settings.port}")
 
     logger.info("Tiny Monitor started on %s:%s", settings.host, settings.port)
     yield

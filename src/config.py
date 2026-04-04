@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     chrome_debug_profile_dir: str = "~/.tiny-monitor/chrome-debug-profile"
     chrome_debug_port: int = 9222
     chrome_debug_auto_launch: bool = True  # auto-launch debug Chrome on startup
+    dashboard_app_auto_launch: bool = True  # auto-launch dashboard in --app mode
 
 
     @field_validator(

@@ -56,6 +56,26 @@ async def _is_cdp_alive(host: str, port: int) -> bool:
         return False
 
 
+def launch_dashboard_app(url: str = "http://localhost:8080") -> Optional[subprocess.Popen]:
+    """Launch Chrome in --app mode (no address bar) for the dashboard."""
+    chrome_bin = _find_chrome_binary()
+    if not chrome_bin:
+        logger.warning("Chrome binary not found, cannot launch dashboard app")
+        return None
+
+    try:
+        proc = subprocess.Popen(
+            [chrome_bin, f"--app={url}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("Dashboard app launched (PID %d): %s", proc.pid, url)
+        return proc
+    except Exception as exc:
+        logger.error("Failed to launch dashboard app: %s", exc)
+        return None
+
+
 async def launch_debug_chrome(
     profile_dir: str,
     port: int = 9222,
