@@ -56,8 +56,24 @@ async def _is_cdp_alive(host: str, port: int) -> bool:
         return False
 
 
+def _is_dashboard_already_open(url: str) -> bool:
+    """Check if a Chrome window is already showing the dashboard URL."""
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", f"--app={url}"],
+            capture_output=True, text=True, timeout=3,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def launch_dashboard_app(url: str = "http://localhost:8080") -> Optional[subprocess.Popen]:
     """Launch Chrome in --app mode (no address bar) for the dashboard."""
+    if _is_dashboard_already_open(url):
+        logger.info("Dashboard app already open, skipping launch")
+        return None
+
     chrome_bin = _find_chrome_binary()
     if not chrome_bin:
         logger.warning("Chrome binary not found, cannot launch dashboard app")
