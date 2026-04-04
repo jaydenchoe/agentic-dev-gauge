@@ -226,7 +226,7 @@ const App = (() => {
 
     for (const item of items) {
       if (item.pct == null) continue;
-      const level = Charts.getLevel(item.pct, 60, 85);
+      const level = Charts.getLevel(item.pct, 80, 90);
       updateBar(item.fill, item.val, item.card, item.pct, level);
 
       const detailEl = document.getElementById(item.detail);
@@ -281,7 +281,7 @@ const App = (() => {
     // Premium requests bar
     if (data.premium_used_percent != null) {
       const pct = data.premium_used_percent;
-      const level = Charts.getLevel(pct, 60, 85);
+      const level = Charts.getLevel(pct, 80, 90);
       updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
 
       const detailEl = document.getElementById('detailCopilotPremium');
@@ -339,7 +339,7 @@ const App = (() => {
 
     if (model.startsWith('time-limit')) {
       if (pct != null) {
-        const level = Charts.getLevel(pct, 60, 85);
+        const level = Charts.getLevel(pct, 80, 90);
         updateBar('fillZhipuaiTime', 'valZhipuaiTime', 'cardZhipuaiTime', pct, level);
       }
       const detailEl = document.getElementById('detailZhipuaiTime');
@@ -355,7 +355,7 @@ const App = (() => {
       }
     } else if (model.startsWith('tokens-limit')) {
       if (pct != null) {
-        const level = Charts.getLevel(pct, 60, 85);
+        const level = Charts.getLevel(pct, 80, 90);
         updateBar('fillZhipuaiTokens', 'valZhipuaiTokens', 'cardZhipuaiTokens', pct, level);
       }
       const detailEl = document.getElementById('detailZhipuaiTokens');
