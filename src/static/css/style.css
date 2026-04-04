@@ -173,6 +173,10 @@ body {
 .section__header-row--3col {
   grid-template-columns: 1fr 2fr;
 }
+
+.section__header-row--codex-row {
+  grid-template-columns: 2fr 1fr 1fr;
+}
 .section--local { flex: 1; }
 
 .section__header {
@@ -204,6 +208,11 @@ body {
 .section__badge--copilot {
   color: #79c0ff;
   background: rgba(121, 192, 255, 0.12);
+}
+
+.section__badge--codex {
+  background: rgba(16, 163, 127, 0.15);
+  color: #10a37f;
 }
 
 .section__badge--accent {
@@ -391,6 +400,11 @@ body {
 /* --- Copilot label accent --- */
 .card--copilot .bar__label {
   color: #79c0ff;
+}
+
+/* --- Codex label accent --- */
+.card--codex .bar__label {
+  color: #10a37f;
 }
 
 /* --- ZhipuAI label accent --- */

@@ -7,6 +7,7 @@ const App = (() => {
   let thresholds = {};
   let claudeDataReceived = false;
   let claudeDisconnectTimer = null;
+  const codexUsageState = {};
   const CDP_TIMEOUT_MS = 30000;
 
   function init() {
@@ -310,9 +311,74 @@ const App = (() => {
     // Process per-provider token usages
     const usages = data.usages || [];
     for (const usage of usages) {
+      if (usage.provider === 'codex') {
+        handleCodexUsage(usage);
+      }
       if (usage.provider === 'zhipuai') {
         handleZhipuaiUsage(usage);
       }
+    }
+  }
+
+  // --- Codex Usage Handler ---
+
+  function handleCodexUsage(usage) {
+    if (!usage) return;
+
+    codexUsageState[usage.model] = usage;
+
+    if (usage.plan_type) {
+      const planEl = document.getElementById('codexPlan');
+      if (planEl && !planEl.textContent) {
+        planEl.textContent = usage.plan_type.toUpperCase();
+      }
+    }
+
+    if (!document.getElementById('codexPlan')?.textContent) {
+      const planEl = document.getElementById('codexPlan');
+      if (planEl) planEl.textContent = 'PRO';
+    }
+
+    renderCodexSession();
+    renderCodexWeekly();
+  }
+
+  function renderCodexSession() {
+    const session = codexUsageState['session'];
+    if (!session || session.quota_percentage == null) return;
+
+    const level = Charts.getLevel(session.quota_percentage, llmThreshold().warning, llmThreshold().critical);
+    updateBar('fillCodexSession', 'valCodexSession', 'cardCodexSession', session.quota_percentage, level);
+
+    const detailEl = document.getElementById('detailCodexSession');
+    if (detailEl) {
+      detailEl.textContent = session.reset_text || '';
+    }
+  }
+
+  function renderCodexWeekly() {
+    const weekly = codexUsageState['weekly'];
+    if (!weekly || weekly.quota_percentage == null) return;
+
+    const level = Charts.getLevel(weekly.quota_percentage, llmThreshold().warning, llmThreshold().critical);
+    updateBar('fillCodexWeekly', 'valCodexWeekly', 'cardCodexWeekly', weekly.quota_percentage, level);
+
+    const detailParts = [];
+    if (weekly.reset_text) detailParts.push(weekly.reset_text);
+
+    const spark = codexUsageState['spark-weekly'];
+    if (spark && spark.quota_percentage != null) {
+      detailParts.push(`Spark: ${Math.round(spark.quota_percentage)}%`);
+    }
+
+    const review = codexUsageState['review'];
+    if (review && review.quota_percentage != null) {
+      detailParts.push(`Review: ${Math.round(review.quota_percentage)}%`);
+    }
+
+    const detailEl = document.getElementById('detailCodexWeekly');
+    if (detailEl) {
+      detailEl.textContent = detailParts.join(' · ');
     }
   }
 
@@ -339,22 +405,7 @@ const App = (() => {
     }
 
     if (model.startsWith('time-limit')) {
-      // MCP tool calls (5h rolling)
-      if (pct != null) {
-        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-        updateBar('fillZhipuaiMcp', 'valZhipuaiMcp', 'cardZhipuaiMcp', pct, level);
-      }
-      const detailEl = document.getElementById('detailZhipuaiMcp');
-      if (detailEl) {
-        const limit = usage.quota_limit;
-        const used = usage.total_tokens || 0;
-        if (limit) {
-          detailEl.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`;
-        }
-        if (usage.reset_text) {
-          detailEl.textContent = (detailEl.textContent ? detailEl.textContent + ' · ' : '') + usage.reset_text;
-        }
-      }
+      return;
     } else if (model.startsWith('tokens-limit')) {
       // Monthly token usage
       if (pct != null) {

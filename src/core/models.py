@@ -1,6 +1,6 @@
 """Agentic Dev Gauge domain models."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -67,6 +67,7 @@ class TokenUsage:
     quota_limit: Optional[int] = None
     quota_percentage: Optional[float] = None
     reset_text: Optional[str] = None
+    plan_type: Optional[str] = None
 
 
 @dataclass

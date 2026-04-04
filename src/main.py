@@ -84,6 +84,7 @@ def _build_usage_adapters() -> list[UsagePort]:
     """Discover available AI usage adapters (best-effort)."""
     adapters: list[UsagePort] = []
     adapter_classes: list[tuple[str, str]] = [
+        ("src.adapters.ai_usage.codex_adapter", "CodexUsageAdapter"),
         ("src.adapters.ai_usage.zhipuai_adapter", "ZhipuAIUsageAdapter"),
     ]
     for module_path, class_name in adapter_classes:
@@ -135,6 +136,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Build services
     monitor_svc = MonitorService(metrics_adapter, interval=settings.metrics_interval_sec)
     api_keys = {
+        "codex": settings.codex_api_key or "",
         "zhipuai": settings.zhipuai_api_key or "",
     }
     usage_svc = UsageService(

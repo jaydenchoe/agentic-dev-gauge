@@ -102,19 +102,39 @@
       </div>
     </section>
 
-    <!-- Copilot + ZhipuAI (single 3-col grid, split headers) -->
+    <!-- Codex + Copilot + ZhipuAI -->
     <section class="section section--row3">
-      <div class="section__header-row section__header-row--3col">
+      <div class="section__header-row section__header-row--codex-row">
+        <div class="section__header">
+          <span>Codex</span>
+          <span class="section__badge section__badge--codex" id="codexPlan"></span>
+        </div>
         <div class="section__header">
           <span>Copilot</span>
           <span class="section__badge section__badge--copilot" id="copilotPlan"></span>
         </div>
-        <div class="section__header section__header--span2">
+        <div class="section__header">
           <span>ZhipuAI</span>
           <span class="section__badge section__badge--accent" id="zhipuaiPlan"></span>
         </div>
       </div>
-      <div class="section__grid section__grid--3col">
+      <div class="section__grid">
+        <div class="card card--codex" id="cardCodexSession">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillCodexSession"></div>
+            <span class="bar__label">Session</span>
+            <span class="bar__detail" id="detailCodexSession"></span>
+            <span class="bar__value bar__value--muted" id="valCodexSession">--<span class="bar__unit">%</span></span>
+          </div>
+        </div>
+        <div class="card card--codex" id="cardCodexWeekly">
+          <div class="bar">
+            <div class="bar__fill bar__fill--skeleton" id="fillCodexWeekly"></div>
+            <span class="bar__label">Weekly</span>
+            <span class="bar__detail" id="detailCodexWeekly"></span>
+            <span class="bar__value bar__value--muted" id="valCodexWeekly">--<span class="bar__unit">%</span></span>
+          </div>
+        </div>
         <div class="card card--copilot" id="cardCopilotPremium">
           <div class="bar">
             <div class="bar__fill bar__fill--skeleton" id="fillCopilotPremium"></div>
@@ -129,14 +149,6 @@
             <span class="bar__label">Monthly</span>
             <span class="bar__detail" id="detailZhipuaiTokens"></span>
             <span class="bar__value bar__value--muted" id="valZhipuaiTokens">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-        <div class="card card--zhipuai" id="cardZhipuaiMcp">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiMcp"></div>
-            <span class="bar__label">MCP Calls</span>
-            <span class="bar__detail" id="detailZhipuaiMcp"></span>
-            <span class="bar__value bar__value--muted" id="valZhipuaiMcp">--<span class="bar__unit">%</span></span>
           </div>
         </div>
       </div>
@@ -172,6 +184,10 @@
       <div class="modal__body" id="settingsBody">
         <fieldset class="settings-group">
           <legend class="settings-group__title">API Keys</legend>
+          <div class="form-field">
+            <label for="keyCodex">Codex (Bearer Token)</label>
+            <input type="password" id="keyCodex" placeholder="Bearer token from chatgpt.com" autocomplete="off">
+          </div>
           <div class="form-field">
             <label for="keyZhipuai">ZhipuAI</label>
             <input type="password" id="keyZhipuai" placeholder="API key" autocomplete="off">
