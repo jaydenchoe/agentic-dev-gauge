@@ -5,6 +5,7 @@
 const Settings = (() => {
   let modal = null;
   let isOpen = false;
+  const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 
   const API_KEY_FIELDS = [
     { id: 'keyCodex', key: 'codex_api_key', provider: 'codex' },
@@ -39,7 +40,7 @@ const Settings = (() => {
 
   async function loadConfig() {
     try {
-      const res = await fetch('/api/config');
+      const res = await fetch('/api/settings');
       if (!res.ok) return;
       const data = await res.json();
 
@@ -68,6 +69,7 @@ const Settings = (() => {
       }
 
       // Load gateway
+      document.getElementById('ollamaBaseUrl').value = data.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
       if (data.gateway_url) {
         document.getElementById('gatewayUrl').value = data.gateway_url;
       }
@@ -100,13 +102,15 @@ const Settings = (() => {
     }
 
     // Gateway settings
+    const ollamaBaseUrl = document.getElementById('ollamaBaseUrl').value.trim();
     const gwUrl = document.getElementById('gatewayUrl').value.trim();
     const gwKey = document.getElementById('gatewayKey').value.trim();
+    config.ollama_base_url = ollamaBaseUrl || DEFAULT_OLLAMA_BASE_URL;
     if (gwUrl) config.gateway_url = gwUrl;
     if (gwKey) config.gateway_key = gwKey;
 
     try {
-      const res = await fetch('/api/config', {
+      const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

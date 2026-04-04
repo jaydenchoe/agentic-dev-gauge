@@ -264,6 +264,16 @@ def _parse_usage_text(text: str) -> Optional[ClaudeWebUsage]:
         logger.warning("Failed to parse usage from page text")
         return None
 
+    # Compute extra_usage_percent from used/limit if not already parsed
+    if (
+        usage.extra_usage_percent is None
+        and usage.extra_usage_usd is not None
+        and usage.extra_usage_limit_usd
+    ):
+        usage.extra_usage_percent = round(
+            (usage.extra_usage_usd / usage.extra_usage_limit_usd) * 100, 1
+        )
+
     return usage
 
 
