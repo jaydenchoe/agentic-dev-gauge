@@ -1,5 +1,5 @@
 /* ============================================
-   Tiny Monitor — Settings UI
+   Agentic Coding Gauge — Settings UI
    ============================================ */
 
 const Settings = (() => {

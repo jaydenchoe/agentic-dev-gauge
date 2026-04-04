@@ -1,5 +1,5 @@
 /* ============================================
-   Tiny Monitor — Charts & Visualization
+   Agentic Coding Gauge — Charts & Visualization
    ============================================ */
 
 const Charts = (() => {
