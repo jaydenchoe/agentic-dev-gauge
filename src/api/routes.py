@@ -17,41 +17,37 @@ _start_time = time.time()
 _ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
-def _persist_to_env(settings: Any) -> None:
-    """Write current settings to .env so they survive restarts."""
-    from src.config import Settings
-
-    # Only persist real Settings objects, not test mocks
-    if not isinstance(settings, Settings):
+def _persist_env_updates(env_updates: dict[str, str]) -> None:
+    """Update or append env vars without disturbing other .env lines."""
+    if not env_updates:
         return
 
-    lines: dict[str, str] = {}
-
-    # Read existing .env to preserve comments and unknown keys
+    lines: list[str] = []
+    seen_keys: set[str] = set()
     if _ENV_PATH.exists():
-        for line in _ENV_PATH.read_text().splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if "=" in stripped:
-                k, _ = stripped.split("=", 1)
-                lines[k.strip()] = line  # keep original line
+        lines = _ENV_PATH.read_text(encoding="utf-8").splitlines()
 
-    # Only persist user-changeable settings (keys, thresholds, gateway)
-    env_map = {
-        "CODEX_API_KEY": settings.codex_api_key or "",
-        "ZHIPUAI_API_KEY": settings.zhipuai_api_key or "",
-        "THRESHOLDS": json.dumps(
-            [dataclasses.asdict(t) for t in settings.thresholds]
-        ),
-        "OPENCLAW_GATEWAY_URL": settings.openclaw_gateway_url or "",
-        "OPENCLAW_API_KEY": settings.openclaw_api_key or "",
-    }
+    updated_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in line:
+            updated_lines.append(line)
+            continue
 
-    for k, v in env_map.items():
-        lines[k] = f"{k}={v}"
+        key, _, _ = line.partition("=")
+        env_key = key.strip()
+        if env_key in env_updates:
+            updated_lines.append(f"{env_key}={env_updates[env_key]}")
+            seen_keys.add(env_key)
+            continue
 
-    _ENV_PATH.write_text("\n".join(lines.values()) + "\n")
+        updated_lines.append(line)
+
+    for env_key, value in env_updates.items():
+        if env_key not in seen_keys:
+            updated_lines.append(f"{env_key}={value}")
+
+    _ENV_PATH.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
 
 
 def _to_dict(obj: Any) -> Any:
@@ -115,6 +111,7 @@ async def update_config(request: Request) -> dict:
     alert_svc = request.app.state.alert_service
     usage_svc = request.app.state.usage_service
     usage_keys_updated = False
+    env_updates: dict[str, str] = {}
 
     if "thresholds" in body:
         from src.core.models import ThresholdConfig
@@ -122,15 +119,28 @@ async def update_config(request: Request) -> dict:
         new_thresholds = [ThresholdConfig(**t) for t in body["thresholds"]]
         settings.thresholds = new_thresholds
         alert_svc.update_thresholds(new_thresholds)
+        env_updates["THRESHOLDS"] = json.dumps(
+            [dataclasses.asdict(t) for t in settings.thresholds]
+        )
 
     # API key updates
-    if "codex_api_key" in body:
-        settings.codex_api_key = body["codex_api_key"] or None
+    usage_api_key_fields = {"codex_api_key", "zhipuai_api_key"}
+    for field_name in usage_api_key_fields:
+        if field_name not in body:
+            continue
+
+        setattr(settings, field_name, body[field_name] or None)
+        env_updates[field_name.upper()] = getattr(settings, field_name) or ""
         usage_keys_updated = True
 
-    if "zhipuai_api_key" in body:
-        settings.zhipuai_api_key = body["zhipuai_api_key"] or None
-        usage_keys_updated = True
+    for field_name, value in body.items():
+        if field_name in usage_api_key_fields or not field_name.endswith("_api_key"):
+            continue
+        if not hasattr(settings, field_name):
+            continue
+
+        setattr(settings, field_name, value or None)
+        env_updates[field_name.upper()] = getattr(settings, field_name) or ""
 
     if usage_keys_updated:
         usage_svc.update_api_keys({
@@ -143,11 +153,13 @@ async def update_config(request: Request) -> dict:
     # Gateway settings
     if "gateway_url" in body:
         settings.openclaw_gateway_url = body["gateway_url"] or None
+        env_updates["OPENCLAW_GATEWAY_URL"] = settings.openclaw_gateway_url or ""
     if "gateway_key" in body:
         settings.openclaw_api_key = body["gateway_key"] or None
+        env_updates["OPENCLAW_API_KEY"] = settings.openclaw_api_key or ""
 
-    # Persist to .env so settings survive restarts
-    _persist_to_env(settings)
+    # Persist updated env-backed settings so they survive restarts.
+    _persist_env_updates(env_updates)
 
     return {"status": "updated"}
 
