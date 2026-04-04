@@ -91,10 +91,8 @@ async def fetch_claude_web_usage(
             return None
 
         ws_url = page["webSocketDebuggerUrl"]
-        already_on_usage = usage_page is not None
-
-        # Use websockets to connect
-        text = await _cdp_get_page_text(ws_url, skip_navigate=already_on_usage)
+        # Always do full navigation to ensure fresh data (SPA won't update on reload alone)
+        text = await _cdp_get_page_text(ws_url, skip_navigate=False)
         if not text:
             return None
 
@@ -130,17 +128,17 @@ async def _cdp_get_page_text(ws_url: str, skip_navigate: bool = False) -> Option
             # Wait for page to render
             await asyncio.sleep(6)
         else:
-            # Already on usage page, just reload to get fresh data
+            # Already on usage page, reload to get fresh data
             await ws.send(json.dumps({
                 "id": 1,
-                "method": "Runtime.evaluate",
-                "params": {"expression": "void 0"},
+                "method": "Page.reload",
+                "params": {"ignoreCache": True},
             }))
             while True:
                 msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
                 if msg.get("id") == 1:
                     break
-            await asyncio.sleep(1)
+            await asyncio.sleep(6)
 
         # Extract text
         await ws.send(json.dumps({

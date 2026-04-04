@@ -354,6 +354,17 @@ body {
   margin-left: 1px;
 }
 
+/* --- Sparkline canvas overlay --- */
+.bar__sparkline {
+  position: absolute;
+  right: 90px;
+  top: 4px;
+  bottom: 4px;
+  width: 120px;
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* --- Network bar --- */
 .bar--net {
   display: flex;
