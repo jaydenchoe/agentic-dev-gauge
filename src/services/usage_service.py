@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from src.adapters.ai_usage.claude_web_usage import ClaudeWebUsage, fetch_claude_web_usage
-from src.adapters.ai_usage.copilot_web_usage import CopilotWebUsage, fetch_copilot_web_usage
+from src.adapters.ai_usage.copilot_api_usage import CopilotApiUsage, fetch_copilot_api_usage
 from src.core.models import TokenUsage, UsageSnapshot
 from src.core.ports.usage import UsagePort
 
@@ -23,7 +23,7 @@ class UsageService:
         interval: float = 60.0,
         claude_web_cdp_port: int = 9222,
         claude_web_interval: float = 300.0,
-        copilot_web_interval: float = 300.0,
+        copilot_api_interval: float = 300.0,
     ) -> None:
         self._adapters = adapters
         self._api_keys = api_keys  # provider_name -> api_key
@@ -35,10 +35,10 @@ class UsageService:
         self._claude_web_interval = claude_web_interval
         self._claude_web_latest: Optional[ClaudeWebUsage] = None
         self._claude_web_task: Optional[asyncio.Task] = None
-        # Copilot web usage
-        self._copilot_web_interval = copilot_web_interval
-        self._copilot_web_latest: Optional[CopilotWebUsage] = None
-        self._copilot_web_task: Optional[asyncio.Task] = None
+        # Copilot API usage
+        self._copilot_api_interval = copilot_api_interval
+        self._copilot_api_latest: Optional[CopilotApiUsage] = None
+        self._copilot_api_task: Optional[asyncio.Task] = None
 
     @property
     def latest(self) -> Optional[UsageSnapshot]:
@@ -49,8 +49,8 @@ class UsageService:
         return self._claude_web_latest
 
     @property
-    def copilot_web_latest(self) -> Optional[CopilotWebUsage]:
-        return self._copilot_web_latest
+    def copilot_api_latest(self) -> Optional[CopilotApiUsage]:
+        return self._copilot_api_latest
 
     def update_api_keys(self, api_keys: dict[str, str]) -> None:
         self._api_keys = api_keys
@@ -97,27 +97,30 @@ class UsageService:
                 logger.exception("Claude web usage collection error")
             await asyncio.sleep(self._claude_web_interval)
 
-    async def _copilot_web_loop(self) -> None:
+    async def _copilot_api_loop(self) -> None:
         while True:
             try:
-                result = await fetch_copilot_web_usage(cdp_port=self._cdp_port)
+                result = await fetch_copilot_api_usage()
                 if result:
-                    self._copilot_web_latest = result
-                    logger.info("Copilot web usage: premium=%s%%", result.premium_used_percent)
+                    self._copilot_api_latest = result
+                    premium = next((q for q in result.quotas if q.quota_id == "premium_interactions"), None)
+                    if premium:
+                        logger.info("Copilot API usage: premium=%s%% used (%s/%s)",
+                                    premium.percent_used, premium.entitlement - premium.remaining, premium.entitlement)
             except Exception:
-                logger.exception("Copilot web usage collection error")
-            await asyncio.sleep(self._copilot_web_interval)
+                logger.exception("Copilot API usage collection error")
+            await asyncio.sleep(self._copilot_api_interval)
 
     def start(self) -> None:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
         if self._claude_web_task is None or self._claude_web_task.done():
             self._claude_web_task = asyncio.create_task(self._claude_web_loop())
-        if self._copilot_web_task is None or self._copilot_web_task.done():
-            self._copilot_web_task = asyncio.create_task(self._copilot_web_loop())
+        if self._copilot_api_task is None or self._copilot_api_task.done():
+            self._copilot_api_task = asyncio.create_task(self._copilot_api_loop())
 
     async def stop(self) -> None:
-        for task in (self._task, self._claude_web_task, self._copilot_web_task):
+        for task in (self._task, self._claude_web_task, self._copilot_api_task):
             if task and not task.done():
                 task.cancel()
                 try:
