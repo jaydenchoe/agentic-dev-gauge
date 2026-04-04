@@ -1,4 +1,4 @@
-"""Tiny Monitor — FastAPI application entry point."""
+"""Agentic Coding Gauge — FastAPI application entry point."""
 
 from __future__ import annotations
 
@@ -160,7 +160,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.dashboard_app_auto_launch:
         dashboard_proc = launch_dashboard_app(f"http://localhost:{settings.port}")
 
-    logger.info("Tiny Monitor started on %s:%s", settings.host, settings.port)
+    logger.info("Agentic Coding Gauge started on %s:%s", settings.host, settings.port)
     yield
 
     # Shutdown
@@ -168,14 +168,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await monitor_svc.stop()
     await usage_svc.stop()
     shutdown_debug_chrome(chrome_proc)
-    logger.info("Tiny Monitor stopped")
+    logger.info("Agentic Coding Gauge stopped")
 
 
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Tiny Monitor", lifespan=lifespan)
+app = FastAPI(title="Agentic Coding Gauge", lifespan=lifespan)
 app.include_router(api_router)
 app.include_router(ws_router)
 

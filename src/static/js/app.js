@@ -1,5 +1,5 @@
 /* ============================================
-   Tiny Monitor — Main Application
+   Agentic Coding Gauge — Main Application
    ============================================ */
 
 const App = (() => {

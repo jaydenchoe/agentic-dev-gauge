@@ -1,5 +1,5 @@
 /* ============================================
-   Tiny Monitor — WebSocket Client
+   Agentic Coding Gauge — WebSocket Client
    ============================================ */
 
 class MonitorWebSocket {

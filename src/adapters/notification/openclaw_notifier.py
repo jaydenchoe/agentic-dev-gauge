@@ -25,7 +25,7 @@ class OpenClawNotifier(NotificationPort):
             headers["Authorization"] = f"Bearer {self._api_key}"
 
         message = (
-            f"[Tiny Monitor] {event.level.upper()}: "
+            f"[Agentic Coding Gauge] {event.level.upper()}: "
             f"{event.metric} = {event.current_value:.1f} "
             f"(threshold {event.threshold:.1f}) — {event.message}"
         )
