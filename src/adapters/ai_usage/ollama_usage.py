@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class OllamaUsage:
     model: Optional[str] = None  # e.g. "qwen3.5:35b-a3b"
     parameter_size: Optional[str] = None  # e.g. "36.0B"
     vram_gb: Optional[float] = None  # VRAM usage in GB
+    vram_percent: Optional[float] = None  # VRAM as % of total unified memory
     tok_per_sec: Optional[float] = None  # benchmark result
     benchmark_ago: Optional[str] = None  # "2m ago"
     available: bool = False
@@ -30,6 +32,7 @@ class OllamaUsage:
             "model": self.model,
             "parameter_size": self.parameter_size,
             "vram_gb": self.vram_gb,
+            "vram_percent": self.vram_percent,
             "tok_per_sec": self.tok_per_sec,
             "benchmark_ago": self.benchmark_ago,
             "available": self.available,
@@ -57,11 +60,14 @@ async def fetch_ollama_status(
     m = models[0]  # First loaded model
     vram_bytes = m.get("size_vram", 0)
     details = m.get("details", {})
+    total_mem = psutil.virtual_memory().total
+    vram_pct = round(vram_bytes / total_mem * 100, 1) if vram_bytes and total_mem else None
 
     return OllamaUsage(
         model=m.get("name"),
         parameter_size=details.get("parameter_size"),
         vram_gb=round(vram_bytes / (1024**3), 1) if vram_bytes else None,
+        vram_percent=vram_pct,
         available=True,
     )
 

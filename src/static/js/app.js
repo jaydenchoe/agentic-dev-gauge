@@ -424,38 +424,52 @@ const App = (() => {
   function handleOllama(data) {
     if (!data) return;
 
+    const fillEl = document.getElementById('fillOllama');
     const valEl = document.getElementById('valOllama');
     const detailEl = document.getElementById('detailOllama');
 
     if (!data.available) {
+      if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
       if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
       if (detailEl) detailEl.textContent = '';
       return;
     }
 
     if (!data.model) {
+      if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
       if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
       if (detailEl) detailEl.textContent = '';
       return;
     }
 
-    // Value: tok/s or model name
+    // Progress bar: VRAM %
+    const vramPct = data.vram_percent || 0;
+    const th = thresholds.memory_percent || { warning: 80, critical: 95 };
+    const level = Charts.getLevel(vramPct, th.warning, th.critical);
+    updateBar('fillOllama', 'valOllama', 'cardOllama', vramPct, level);
+
+    // Override value: show tok/s instead of VRAM %
     if (valEl) {
       if (data.tok_per_sec != null) {
-        valEl.textContent = data.tok_per_sec + ' tk/s';
+        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tk/s</span>';
       } else {
-        valEl.textContent = 'ready';
+        valEl.innerHTML = Math.round(vramPct) + '<span class="bar__unit">%</span>';
       }
       valEl.className = 'bar__value';
+      if (level === 'warning') valEl.classList.add('bar__value--warning');
+      if (level === 'critical') valEl.classList.add('bar__value--critical');
     }
 
-    // Detail: model name + VRAM + benchmark time
+    // Detail: model name + VRAM GB (%) + benchmark time
     if (detailEl) {
       let parts = [data.model];
-      if (data.vram_gb) parts.push(data.vram_gb + ' GB');
+      if (data.vram_gb) parts.push(data.vram_gb + ' GB (' + Math.round(vramPct) + '%)');
       if (data.benchmark_ago) parts.push(data.benchmark_ago);
       detailEl.textContent = parts.join(' · ');
     }
+
+    // Sparkline: track VRAM % history
+    Charts.pushSparkline('sparkOllama', vramPct, level);
   }
 
   return { init, onConfigSaved };
