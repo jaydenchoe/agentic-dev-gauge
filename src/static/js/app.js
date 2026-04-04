@@ -260,32 +260,18 @@ const App = (() => {
     }
 
     const quotas = data.quotas || [];
-    for (const q of quotas) {
-      if (q.quota_id === 'premium_interactions') {
-        const pct = q.percent_used;
-        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-        updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
+    const premium = quotas.find(q => q.quota_id === 'premium_interactions');
+    if (premium) {
+      const pct = premium.percent_used;
+      const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+      updateBar('fillCopilotPremium', 'valCopilotPremium', 'cardCopilotPremium', pct, level);
 
-        const detailEl = document.getElementById('detailCopilotPremium');
-        if (detailEl) {
-          const used = q.entitlement - q.remaining;
-          let text = `${used} / ${q.entitlement}`;
-          if (data.reset_date) text += ` · Resets ${data.reset_date}`;
-          detailEl.textContent = text;
-        }
-      } else if (q.quota_id === 'completions') {
-        if (q.unlimited) {
-          const fillEl = document.getElementById('fillCopilotCompletions');
-          const valEl = document.getElementById('valCopilotCompletions');
-          if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill'; }
-          if (valEl) { valEl.innerHTML = '0<span class="bar__unit">%</span>'; valEl.className = 'bar__value'; }
-          const detailEl = document.getElementById('detailCopilotCompletions');
-          if (detailEl) detailEl.textContent = 'unlimited';
-        } else {
-          const pct = q.percent_used;
-          const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-          updateBar('fillCopilotCompletions', 'valCopilotCompletions', 'cardCopilotCompletions', pct, level);
-        }
+      const detailEl = document.getElementById('detailCopilotPremium');
+      if (detailEl) {
+        const used = premium.entitlement - premium.remaining;
+        let text = `${used} / ${premium.entitlement}`;
+        if (data.reset_date) text += ` · Resets ${data.reset_date}`;
+        detailEl.textContent = text;
       }
     }
   }
@@ -351,15 +337,6 @@ const App = (() => {
         if (usage.reset_text) {
           detailEl.textContent = (detailEl.textContent ? detailEl.textContent + ' · ' : '') + usage.reset_text;
         }
-      }
-    } else if (model.startsWith('tokens-limit')) {
-      if (pct != null) {
-        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-        updateBar('fillZhipuaiTokens', 'valZhipuaiTokens', 'cardZhipuaiTokens', pct, level);
-      }
-      const detailEl = document.getElementById('detailZhipuaiTokens');
-      if (detailEl && usage.reset_text) {
-        detailEl.textContent = usage.reset_text;
       }
     }
   }
