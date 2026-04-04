@@ -1,5 +1,5 @@
 /* ============================================
-   Agentic Coding Gauge — Settings UI
+   Agentic Dev Gauge — Settings UI
    ============================================ */
 
 const Settings = (() => {
