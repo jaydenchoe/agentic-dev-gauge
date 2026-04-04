@@ -166,12 +166,16 @@ body {
 .section--claude { flex: 1; }
 .section-row {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
   min-height: 0;
 }
-.section-row .section--copilot { flex: 1; }
-.section-row .section--zhipuai { flex: 2; }
+.section-row .section {
+  flex: 1;
+}
+.section-row .section__grid {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+}
 .section--local { flex: 1; }
 
 .section__header {
