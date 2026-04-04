@@ -171,7 +171,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 590;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -287,7 +287,7 @@ body {
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 590;
   color: var(--text-secondary);
   letter-spacing: 0.02em;
@@ -298,7 +298,7 @@ body {
   position: absolute;
   left: 14px;
   bottom: 7px;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 400;
   color: var(--text-muted);
   z-index: 1;
@@ -320,7 +320,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 1.6rem;
+  font-size: 2.0rem;
   font-weight: 590;
   color: var(--text-primary);
   letter-spacing: -0.5px;
@@ -329,10 +329,10 @@ body {
 
 .bar__value--warning { color: var(--color-warning); }
 .bar__value--critical { color: var(--color-critical); }
-.bar__value--muted { color: var(--text-dim); font-size: 1.1rem; }
+.bar__value--muted { color: var(--text-dim); font-size: 1.3rem; }
 
 .bar__unit {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 510;
   margin-left: 1px;
 }
