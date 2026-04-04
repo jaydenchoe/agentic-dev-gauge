@@ -1,5 +1,5 @@
 /* ============================================
-   Agentic Coding Gauge — Charts & Visualization
+   Agentic Dev Gauge — Charts & Visualization
    ============================================ */
 
 const Charts = (() => {

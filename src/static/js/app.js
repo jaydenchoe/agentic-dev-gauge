@@ -1,5 +1,5 @@
 /* ============================================
-   Agentic Coding Gauge — Main Application
+   Agentic Dev Gauge — Main Application
    ============================================ */
 
 const App = (() => {

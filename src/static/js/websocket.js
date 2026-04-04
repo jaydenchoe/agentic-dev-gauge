@@ -1,5 +1,5 @@
 /* ============================================
-   Agentic Coding Gauge — WebSocket Client
+   Agentic Dev Gauge — WebSocket Client
    ============================================ */
 
 class MonitorWebSocket {

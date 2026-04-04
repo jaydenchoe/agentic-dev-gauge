@@ -1,4 +1,4 @@
-"""Agentic Coding Gauge domain models."""
+"""Agentic Dev Gauge domain models."""
 
 from dataclasses import dataclass, field
 from datetime import datetime

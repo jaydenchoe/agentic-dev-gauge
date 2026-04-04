@@ -1,4 +1,4 @@
-# Agentic Coding Gauge
+# Agentic Dev Gauge
 
 A real-time dashboard for monitoring system resources and AI coding agent quota usage at a glance. Built for developers who use multiple AI coding assistants (Claude, GitHub Copilot, ZhipuAI) and need to keep an eye on their usage limits.
 
