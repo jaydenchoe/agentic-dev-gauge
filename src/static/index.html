@@ -102,13 +102,14 @@
       </div>
     </section>
 
-    <!-- Copilot Section -->
-    <section class="section section--copilot">
+    <!-- AI Services Section (Copilot + ZhipuAI) -->
+    <section class="section section--services">
       <div class="section__header">
-        <span>Copilot</span>
+        <span>AI Services</span>
         <span class="section__badge section__badge--copilot" id="copilotPlan"></span>
+        <span class="section__badge section__badge--accent" id="zhipuaiPlan"></span>
       </div>
-      <div class="section__grid section__grid--1col" id="cardCopilotBrand">
+      <div class="section__grid section__grid--3col">
         <div class="card card--copilot" id="cardCopilotPremium">
           <div class="bar">
             <div class="bar__fill bar__fill--skeleton" id="fillCopilotPremium"></div>
@@ -117,16 +118,6 @@
             <span class="bar__value bar__value--muted" id="valCopilotPremium">--<span class="bar__unit">%</span></span>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- ZhipuAI Section -->
-    <section class="section section--zhipuai">
-      <div class="section__header">
-        <span>ZhipuAI</span>
-        <span class="section__badge section__badge--accent" id="zhipuaiPlan"></span>
-      </div>
-      <div class="section__grid" id="cardZhipuaiBrand">
         <div class="card card--zhipuai" id="cardZhipuaiTokens">
           <div class="bar">
             <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiTokens"></div>
@@ -141,6 +132,22 @@
             <span class="bar__label">MCP Calls</span>
             <span class="bar__detail" id="detailZhipuaiMcp"></span>
             <span class="bar__value bar__value--muted" id="valZhipuaiMcp">--<span class="bar__unit">%</span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Local LLM Section -->
+    <section class="section section--local">
+      <div class="section__header">
+        <span>Local LLM</span>
+      </div>
+      <div class="section__grid section__grid--1col">
+        <div class="card card--local" id="cardOllama">
+          <div class="bar bar--info">
+            <span class="bar__label">Ollama</span>
+            <span class="bar__detail" id="detailOllama"></span>
+            <span class="bar__value bar__value--muted" id="valOllama">--</span>
           </div>
         </div>
       </div>

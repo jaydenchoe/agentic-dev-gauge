@@ -114,10 +114,12 @@ async def run_broadcast_loop(app: Any) -> None:
             usage_snapshot = usage_svc.latest
             claude_web = usage_svc.claude_web_latest
             copilot_api = usage_svc.copilot_api_latest
-            if manager.active_count > 0 and (usage_snapshot or claude_web or copilot_api):
+            ollama = usage_svc.ollama_latest
+            if manager.active_count > 0 and (usage_snapshot or claude_web or copilot_api or ollama):
                 usage_data = _serialise(usage_snapshot) if usage_snapshot else {}
                 usage_data["claude_web"] = claude_web.to_dict() if claude_web else None
                 usage_data["copilot_api"] = copilot_api.to_dict() if copilot_api else None
+                usage_data["ollama"] = ollama.to_dict() if ollama else None
                 await manager.broadcast("usage_update", usage_data)
 
                 if usage_snapshot:

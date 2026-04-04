@@ -161,6 +161,16 @@ async def copilot_usage(request: Request) -> Any:
     return {"data": data.to_dict()}
 
 
+@router.get("/ollama-usage")
+async def ollama_usage(request: Request) -> Any:
+    """Return Ollama local LLM status."""
+    svc = request.app.state.usage_service
+    data = svc.ollama_latest
+    if data is None:
+        return {"error": "no data yet (Ollama running?)", "data": None}
+    return {"data": data.to_dict()}
+
+
 @router.post("/usage/refresh")
 async def refresh_usage(request: Request) -> dict:
     """Force an immediate usage collection and return diagnostics."""
