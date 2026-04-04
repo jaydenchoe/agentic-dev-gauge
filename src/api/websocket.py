@@ -34,7 +34,7 @@ class ConnectionManager:
     async def connect(self, ws: WebSocket) -> None:
         await ws.accept()
         # Subscribe to all channels by default
-        self._connections[ws] = {"system_metrics", "usage_update", "alert", "ratelimits", "copilot_web"}
+        self._connections[ws] = {"system_metrics", "usage_update", "alert"}
 
     def disconnect(self, ws: WebSocket) -> None:
         self._connections.pop(ws, None)
@@ -125,16 +125,5 @@ async def run_broadcast_loop(app: Any) -> None:
                     for alert in cost_alerts:
                         await manager.broadcast("alert", alert)
 
-            # Plan usage (session 5h + weekly)
-            admin_key = settings.anthropic_api_key
-            if admin_key and manager.active_count > 0:
-                from src.adapters.ai_usage.anthropic_plan_usage import fetch_plan_usage
-                plan_info = await fetch_plan_usage(
-                    admin_key=admin_key,
-                    session_limit=settings.anthropic_session_limit,
-                    weekly_limit=settings.anthropic_weekly_limit,
-                )
-                if plan_info:
-                    await manager.broadcast("ratelimits", {"anthropic": plan_info.to_dict()})
 
         await asyncio.sleep(metrics_interval)

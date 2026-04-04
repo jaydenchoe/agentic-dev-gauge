@@ -39,18 +39,10 @@ def _persist_to_env(settings: Any) -> None:
 
     # Only persist user-changeable settings (keys, thresholds, gateway)
     env_map = {
-        "ANTHROPIC_API_KEY": settings.anthropic_api_key or "",
-        "ANTHROPIC_API_KEY_REGULAR": settings.anthropic_api_key_regular or "",
-        "OPENAI_API_KEY": settings.openai_api_key or "",
-        "GITHUB_TOKEN": settings.github_token or "",
         "ZHIPUAI_API_KEY": settings.zhipuai_api_key or "",
-        "GEMINI_API_KEY": settings.gemini_api_key or "",
         "THRESHOLDS": json.dumps(
             [dataclasses.asdict(t) for t in settings.thresholds]
         ),
-        "ANTHROPIC_SESSION_LIMIT": str(settings.anthropic_session_limit or ""),
-        "ANTHROPIC_WEEKLY_LIMIT": str(settings.anthropic_weekly_limit or ""),
-        "MONTHLY_BUDGET_USD": str(settings.monthly_budget_usd or ""),
         "OPENCLAW_GATEWAY_URL": settings.openclaw_gateway_url or "",
         "OPENCLAW_API_KEY": settings.openclaw_api_key or "",
     }
@@ -87,21 +79,10 @@ async def metrics(request: Request) -> Any:
 @router.get("/usage")
 async def usage(request: Request) -> Any:
     svc = request.app.state.usage_service
-    settings = request.app.state.settings
     snapshot = svc.latest
     if snapshot is None:
-        return {"timestamp": None, "usages": [], "total_cost_usd": None, "budget": None}
-    result = _to_dict(snapshot)
-    budget = settings.monthly_budget_usd
-    if budget and snapshot.total_cost_usd is not None:
-        result["budget"] = {
-            "limit_usd": budget,
-            "used_usd": snapshot.total_cost_usd,
-            "used_percent": round(snapshot.total_cost_usd / budget * 100, 1),
-        }
-    else:
-        result["budget"] = None
-    return result
+        return {"timestamp": None, "usages": [], "total_cost_usd": None}
+    return _to_dict(snapshot)
 
 
 @router.get("/alerts")
@@ -113,26 +94,15 @@ async def alerts(request: Request) -> list:
 @router.get("/config")
 async def get_config(request: Request) -> dict:
     settings = request.app.state.settings
-    providers = []
-    key_map = {
-        "anthropic": settings.anthropic_api_key,
-        "openai": settings.openai_api_key,
-        "github": settings.github_token,
-        "zhipuai": settings.zhipuai_api_key,
-        "gemini": settings.gemini_api_key,
-    }
-    for name, key in key_map.items():
-        providers.append({"name": name, "configured": bool(key)})
+    providers = [
+        {"name": "zhipuai", "configured": bool(settings.zhipuai_api_key)},
+    ]
 
     return {
         "thresholds": [_to_dict(t) for t in settings.thresholds],
         "providers": providers,
         "gateway_url": settings.openclaw_gateway_url or "",
         "gateway_configured": bool(settings.openclaw_api_key),
-        "monthly_budget_usd": settings.monthly_budget_usd,
-        "anthropic_session_limit": settings.anthropic_session_limit,
-        "anthropic_weekly_limit": settings.anthropic_weekly_limit,
-        "anthropic_regular_configured": bool(settings.anthropic_api_key_regular),
     }
 
 
@@ -151,46 +121,13 @@ async def update_config(request: Request) -> dict:
         alert_svc.update_thresholds(new_thresholds)
 
     # API key updates
-    # Regular API key (rate limits) — handled separately
-    if "anthropic_api_key_regular" in body:
-        settings.anthropic_api_key_regular = body["anthropic_api_key_regular"] or None
-
-    key_fields = {
-        "anthropic_api_key": "anthropic",
-        "openai_api_key": "openai",
-        "github_token": "github",
-        "zhipuai_api_key": "zhipuai",
-        "gemini_api_key": "gemini",
-    }
-    keys_changed = False
-    for field, provider in key_fields.items():
-        if field in body:
-            setattr(settings, field, body[field] or None)
-            keys_changed = True
-    if keys_changed:
+    if "zhipuai_api_key" in body:
+        settings.zhipuai_api_key = body["zhipuai_api_key"] or None
         usage_svc.update_api_keys({
-            "anthropic": settings.anthropic_api_key or "",
-            "openai": settings.openai_api_key or "",
-            "github": settings.github_token or "",
             "zhipuai": settings.zhipuai_api_key or "",
-            "gemini": settings.gemini_api_key or "",
         })
-        # Trigger immediate collection so the user doesn't wait 60s
         import asyncio
         asyncio.create_task(usage_svc.collect_once())
-
-    # Plan limits
-    if "anthropic_session_limit" in body:
-        val = body["anthropic_session_limit"]
-        settings.anthropic_session_limit = int(val) if val else None
-    if "anthropic_weekly_limit" in body:
-        val = body["anthropic_weekly_limit"]
-        settings.anthropic_weekly_limit = int(val) if val else None
-
-    # Budget
-    if "monthly_budget_usd" in body:
-        val = body["monthly_budget_usd"]
-        settings.monthly_budget_usd = float(val) if val else None
 
     # Gateway settings
     if "gateway_url" in body:
@@ -224,84 +161,17 @@ async def copilot_web_usage(request: Request) -> Any:
     return {"data": data.to_dict()}
 
 
-@router.get("/ratelimits")
-async def ratelimits(request: Request) -> dict:
-    """Return Anthropic plan usage (session 5h + weekly)."""
-    settings = request.app.state.settings
-    key = settings.anthropic_api_key
-    if not key:
-        return {"error": "anthropic admin key not configured", "anthropic": None}
-    from src.adapters.ai_usage.anthropic_plan_usage import fetch_plan_usage
-    info = await fetch_plan_usage(
-        admin_key=key,
-        session_limit=settings.anthropic_session_limit,
-        weekly_limit=settings.anthropic_weekly_limit,
-    )
-    if info is None:
-        return {"error": "failed to fetch plan usage", "anthropic": None}
-    return {"anthropic": info.to_dict()}
-
-
 @router.post("/usage/refresh")
 async def refresh_usage(request: Request) -> dict:
     """Force an immediate usage collection and return diagnostics."""
     usage_svc = request.app.state.usage_service
-    settings = request.app.state.settings
 
-    keys = {
-        "anthropic": settings.anthropic_api_key or "",
-        "openai": settings.openai_api_key or "",
-        "github": settings.github_token or "",
-        "zhipuai": settings.zhipuai_api_key or "",
-        "gemini": settings.gemini_api_key or "",
-    }
-    configured = {k: bool(v) for k, v in keys.items()}
-
-    # Collect per-adapter with error details — bypass adapter error handling
-    import httpx
-    errors = {}
-    all_usages = []
-    raw_responses = {}
-    for adapter in usage_svc._adapters:
-        provider = adapter.provider_name()
-        api_key = keys.get(provider)
-        if not api_key:
-            continue
-        try:
-            usages = await adapter.fetch_usage(api_key)
-            all_usages.extend(usages)
-            if not usages:
-                # No results — probe the raw HTTP response for diagnostics
-                if provider == "anthropic":
-                    async with httpx.AsyncClient(timeout=15.0) as client:
-                        from datetime import datetime, timezone
-                        now = datetime.now(timezone.utc)
-                        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                        resp = await client.get(
-                            f"{adapter.BASE_URL}/usage_report/messages",
-                            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
-                            params={"start_time": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                    "end_time": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                    "group_by": "model", "time_bucket": "none"},
-                        )
-                        raw_responses[provider] = {
-                            "status": resp.status_code,
-                            "body": resp.json() if resp.status_code < 500 else resp.text[:500],
-                        }
-        except Exception as exc:
-            errors[provider] = str(exc)
-
-    # Also do normal collect
     try:
         snapshot = await usage_svc.collect_once()
     except Exception:
         snapshot = None
 
     return {
-        "configured_providers": configured,
         "adapters_loaded": len(usage_svc._adapters),
-        "usages_returned": len(all_usages),
-        "errors": errors,
-        "raw_responses": raw_responses,
         "data": _to_dict(snapshot) if snapshot else None,
     }
