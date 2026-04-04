@@ -237,13 +237,17 @@ const App = (() => {
     }
 
     // Extra usage
-    const extraEl = document.getElementById('valClaudeExtra');
-    if (extraEl && data.extra_usage) {
+    if (data.extra_usage) {
+      const pct = data.extra_usage.used_percent;
       const used = data.extra_usage.used_usd;
       const limit = data.extra_usage.limit_usd;
-      if (used != null && limit != null) {
-        extraEl.textContent = `$${used} / $${limit}`;
-        extraEl.classList.remove('bar__value--muted');
+      if (pct != null) {
+        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+        updateBar('fillClaudeExtra', 'valClaudeExtra', 'cardClaudeExtra', pct, level);
+      }
+      const detailEl = document.getElementById('detailClaudeExtra');
+      if (detailEl && used != null && limit != null) {
+        detailEl.textContent = `$${used} / $${limit}`;
       }
     }
   }
