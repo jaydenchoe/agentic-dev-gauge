@@ -328,11 +328,12 @@ const App = (() => {
     }
 
     if (model.startsWith('time-limit')) {
+      // MCP tool calls (5h rolling)
       if (pct != null) {
         const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
-        updateBar('fillZhipuaiTime', 'valZhipuaiTime', 'cardZhipuaiTime', pct, level);
+        updateBar('fillZhipuaiMcp', 'valZhipuaiMcp', 'cardZhipuaiMcp', pct, level);
       }
-      const detailEl = document.getElementById('detailZhipuaiTime');
+      const detailEl = document.getElementById('detailZhipuaiMcp');
       if (detailEl) {
         const limit = usage.quota_limit;
         const used = usage.total_tokens || 0;
@@ -342,6 +343,16 @@ const App = (() => {
         if (usage.reset_text) {
           detailEl.textContent = (detailEl.textContent ? detailEl.textContent + ' · ' : '') + usage.reset_text;
         }
+      }
+    } else if (model.startsWith('tokens-limit')) {
+      // Monthly token usage
+      if (pct != null) {
+        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+        updateBar('fillZhipuaiTokens', 'valZhipuaiTokens', 'cardZhipuaiTokens', pct, level);
+      }
+      const detailEl = document.getElementById('detailZhipuaiTokens');
+      if (detailEl && usage.reset_text) {
+        detailEl.textContent = usage.reset_text;
       }
     }
   }
