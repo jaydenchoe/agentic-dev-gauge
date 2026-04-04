@@ -164,8 +164,8 @@ body {
 
 .section--system { flex: 1; }
 .section--claude { flex: 1; }
-.section--copilot { flex: 1; }
-.section--zhipuai { flex: 1; }
+.section--services { flex: 1; }
+.section--local { flex: 1; }
 
 .section__header {
   display: flex;
@@ -388,6 +388,11 @@ body {
 /* --- ZhipuAI label accent --- */
 .card--zhipuai .bar__label {
   color: var(--color-accent-bright);
+}
+
+/* --- Local LLM label accent --- */
+.card--local .bar__label {
+  color: #4ade80;
 }
 
 /* --- Modal --- */

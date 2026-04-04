@@ -70,12 +70,13 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes, usageRes, copilotRes] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/config'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
         fetch('/api/copilot-usage'),
+        fetch('/api/ollama-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -105,6 +106,11 @@ const App = (() => {
       if (copilotRes.status === 'fulfilled' && copilotRes.value.ok) {
         const data = await copilotRes.value.json();
         handleCopilotApi(data.data);
+      }
+
+      if (ollamaRes.status === 'fulfilled' && ollamaRes.value.ok) {
+        const data = await ollamaRes.value.json();
+        handleOllama(data.data);
       }
     } catch (e) {
       // Server not running yet
@@ -296,6 +302,11 @@ const App = (() => {
       handleCopilotApi(data.copilot_api);
     }
 
+    // Forward nested ollama data
+    if (data.ollama) {
+      handleOllama(data.ollama);
+    }
+
     // Process per-provider token usages
     const usages = data.usages || [];
     for (const usage of usages) {
@@ -354,6 +365,45 @@ const App = (() => {
       if (detailEl && usage.reset_text) {
         detailEl.textContent = usage.reset_text;
       }
+    }
+  }
+
+  // --- Ollama Handler ---
+
+  function handleOllama(data) {
+    if (!data) return;
+
+    const valEl = document.getElementById('valOllama');
+    const detailEl = document.getElementById('detailOllama');
+
+    if (!data.available) {
+      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    if (!data.model) {
+      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    // Value: tok/s or model name
+    if (valEl) {
+      if (data.tok_per_sec != null) {
+        valEl.textContent = data.tok_per_sec + ' tk/s';
+      } else {
+        valEl.textContent = 'ready';
+      }
+      valEl.className = 'bar__value';
+    }
+
+    // Detail: model name + VRAM + benchmark time
+    if (detailEl) {
+      let parts = [data.model];
+      if (data.vram_gb) parts.push(data.vram_gb + ' GB');
+      if (data.benchmark_ago) parts.push(data.benchmark_ago);
+      detailEl.textContent = parts.join(' · ');
     }
   }
 
