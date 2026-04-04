@@ -27,11 +27,6 @@ _workspace/      # Architecture docs, QA reports
 - External API calls must be async (httpx)
 - Core domain must not know about external dependencies (Hexagonal principle)
 
-## Token Saving Rule
-- For implementation/code editing tasks, delegate to Codex via `/codex:rescue` instead of editing directly
-- Claude's role: design, review results, commit, PR
-- When delegating, include relevant CLAUDE.md conventions and context in the Codex prompt
-
 ## Behavior Rules (Project-Specific)
 - **Trust dashboard values**: When user asks about a dashboard value, do not contradict it with raw CLI tool output (df, free, etc.). Explain how our code calculates the value first.
 - **Do not pkill debug Chrome**: Debug Chrome runs as a separate instance. Never kill Chrome processes with pkill.

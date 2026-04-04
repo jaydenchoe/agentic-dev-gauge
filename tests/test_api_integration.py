@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -35,13 +35,10 @@ def app(default_thresholds):
     app.state.monitor_service = monitor_svc
     app.state.usage_service = usage_svc
     app.state.alert_service = alert_svc
-    app.state.settings = MagicMock(
+    app.state.settings = SimpleNamespace(
         thresholds=default_thresholds,
-        anthropic_api_key="sk-test",
-        openai_api_key=None,
-        github_token=None,
+        codex_api_key="codex-test-key",
         zhipuai_api_key=None,
-        gemini_api_key=None,
         openclaw_gateway_url=None,
         openclaw_api_key=None,
     )
@@ -196,12 +193,10 @@ class TestConfigEndpoint:
         """Verify that providers with API keys show configured=True."""
         resp = client.get("/api/config")
         data = resp.json()
-        # anthropic_api_key is set to "sk-test" in fixture
-        anthropic = next(p for p in data["providers"] if p["name"] == "anthropic")
-        assert anthropic["configured"] is True
-        # openai has no key
-        openai = next(p for p in data["providers"] if p["name"] == "openai")
-        assert openai["configured"] is False
+        codex = next(p for p in data["providers"] if p["name"] == "codex")
+        assert codex["configured"] is True
+        zhipuai = next(p for p in data["providers"] if p["name"] == "zhipuai")
+        assert zhipuai["configured"] is False
 
     def test_post_config_updates_thresholds(self, client):
         new_config = {
@@ -214,12 +209,40 @@ class TestConfigEndpoint:
         assert resp.json() == {"status": "updated"}
 
     def test_post_config_updates_api_keys(self, app, client):
-        """Verify API key update flow (BUG-2 fix)."""
+        """Verify API key updates are applied to runtime settings."""
         resp = client.post("/api/config", json={
-            "anthropic_api_key": "sk-new-key",
+            "codex_api_key": "codex-new-key",
+            "zhipuai_api_key": "zhipu-new-key",
         })
         assert resp.status_code == 200
-        assert app.state.settings.anthropic_api_key == "sk-new-key"
+        assert app.state.settings.codex_api_key == "codex-new-key"
+        assert app.state.settings.zhipuai_api_key == "zhipu-new-key"
+
+    def test_post_config_persists_api_keys_to_env(self, monkeypatch, app, client, tmp_path):
+        env_path = tmp_path / ".env"
+        env_path.write_text(
+            "# existing config\n"
+            "THRESHOLDS=[{\"metric\":\"cpu_percent\",\"warning\":80,\"critical\":95}]\n"
+            "OPENCLAW_GATEWAY_URL=https://gw.example.com\n"
+            "CODEX_API_KEY=old-codex-key\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("src.api.routes._ENV_PATH", env_path)
+
+        resp = client.post("/api/config", json={
+            "codex_api_key": "codex-new-key",
+            "zhipuai_api_key": "zhipu-new-key",
+        })
+
+        assert resp.status_code == 200
+
+        env_text = env_path.read_text(encoding="utf-8")
+        assert "# existing config" in env_text
+        assert "THRESHOLDS=[{\"metric\":\"cpu_percent\",\"warning\":80,\"critical\":95}]" in env_text
+        assert "OPENCLAW_GATEWAY_URL=https://gw.example.com" in env_text
+        assert "CODEX_API_KEY=codex-new-key" in env_text
+        assert "CODEX_API_KEY=old-codex-key" not in env_text
+        assert "ZHIPUAI_API_KEY=zhipu-new-key" in env_text
 
     def test_post_config_updates_gateway(self, app, client):
         """Verify gateway URL/key update (BUG-2 fix)."""
