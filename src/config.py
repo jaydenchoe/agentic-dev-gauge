@@ -95,4 +95,4 @@ class Settings(BaseSettings):
             return [ThresholdConfig(**t) if isinstance(t, dict) else t for t in items]
         return v  # type: ignore[return-value]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
