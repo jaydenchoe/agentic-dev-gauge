@@ -75,6 +75,12 @@ def png_bytes(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
+def gif_bytes(img: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="GIF")
+    return buf.getvalue()
+
+
 def _pct_text(pct: Optional[float]) -> str:
     return f"{int(round(pct))}%" if pct is not None else "—"
 

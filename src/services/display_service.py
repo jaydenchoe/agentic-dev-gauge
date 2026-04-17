@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from src.adapters.display.renderer import (
-    png_bytes,
+    gif_bytes,
     render_claude,
     render_local_llm,
     render_other,
@@ -70,7 +70,7 @@ class DisplayService:
         page = self._page_index % _PAGE_COUNT
         self._page_index += 1
         img = self._render_page(page)
-        ok = await self._adapter.push_png(png_bytes(img))
+        ok = await self._adapter.push_png(gif_bytes(img))
         if not ok:
             logger.debug("Display push returned False (page %s)", page)
 

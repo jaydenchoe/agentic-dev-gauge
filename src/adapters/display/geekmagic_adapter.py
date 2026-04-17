@@ -16,7 +16,8 @@ _MALFORMED_MARKERS = ("Duplicate Content-Length", "Data after")
 class GeekMagicDisplayAdapter(DisplayPort):
     """POST rendered PNG frames to a GeekMagic SmallTV Ultra (ESP8266, 240x240)."""
 
-    UPLOAD_FILENAME = "tm.png"
+    UPLOAD_FILENAME = "tm.gif"
+    UPLOAD_DIR = "/image/"
     ULTRA_THEME = 3
 
     def __init__(self, base_url: str, timeout_sec: float = 3.0) -> None:
@@ -35,18 +36,17 @@ class GeekMagicDisplayAdapter(DisplayPort):
             if not self._theme_set:
                 try:
                     resp = await client.get(
-                        f"{self._base_url}/set", params={"theme": self.ULTRA_THEME}
+                        f"{self._base_url}/set?theme={self.ULTRA_THEME}"
                     )
                     if 200 <= resp.status_code < 300:
                         self._theme_set = True
                 except httpx.HTTPError as exc:
                     logger.debug("GeekMagic theme set deferred: %s", exc)
 
-            files = {"file": (self.UPLOAD_FILENAME, png_bytes, "image/png")}
+            files = {"file": (self.UPLOAD_FILENAME, png_bytes, "image/gif")}
             try:
                 await client.post(
-                    f"{self._base_url}/doUpload",
-                    params={"dir": "/image/"},
+                    f"{self._base_url}/doUpload?dir={self.UPLOAD_DIR}",
                     files=files,
                 )
             except httpx.RemoteProtocolError as exc:
@@ -65,10 +65,11 @@ class GeekMagicDisplayAdapter(DisplayPort):
                     logger.warning("GeekMagic upload failed: %s", exc)
                     return False
 
+            # Firmware stores files at UPLOAD_DIR + "/" + filename (extra slash).
+            img_path = f"{self.UPLOAD_DIR}/{self.UPLOAD_FILENAME}"  # e.g. /image//tm.gif
             try:
                 resp = await client.get(
-                    f"{self._base_url}/set",
-                    params={"img": f"/image/{self.UPLOAD_FILENAME}"},
+                    f"{self._base_url}/set?img={img_path}"
                 )
             except httpx.HTTPError as exc:
                 logger.warning("GeekMagic /set failed: %s", exc)
