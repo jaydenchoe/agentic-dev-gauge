@@ -1,6 +1,6 @@
 ---
 name: api-integration
-description: "Tiny Monitor API 어댑터 구현 가이드. psutil/macmon 시스템 메트릭 수집, Anthropic/OpenAI/GitHub/ZhipuAI/Gemini 사용량 API 연동, OpenClaw Gateway 알림 발송 방법을 안내한다. adapter-dev 에이전트가 참조하는 스킬."
+description: "Tiny Monitor API 어댑터 구현 가이드. psutil/macmon 시스템 메트릭 수집, Anthropic/OpenAI/GitHub/ZhipuAI/Gemini 사용량 API 연동, OpenClaw Gateway 알림 발송, GeekMagic SmallTV Ultra 외부 디스플레이 푸시 방법을 안내한다. adapter-dev 에이전트가 참조하는 스킬."
 ---
 
 # API Integration Guide
@@ -25,6 +25,9 @@ src/adapters/
 ├── notification/
 │   ├── __init__.py
 │   └── openclaw_notifier.py  # Gateway POST 알림
+├── display/
+│   ├── __init__.py
+│   └── geekmagic_adapter.py  # SmallTV Ultra 240x240 PNG 푸시
 └── license/
     ├── __init__.py
     └── lemonsqueezy_adapter.py  # 라이선스 검증
@@ -380,6 +383,69 @@ class LemonSqueezyAdapter:
                 "tier": "pro" if data.get("valid") else "free",
             }
 ```
+
+## 외부 디스플레이 어댑터 (GeekMagic SmallTV Ultra)
+
+### 장치 프로토콜
+- 엔드포인트 베이스: `http://{ULTRA_IP}` (ESP8266, 포트 80)
+- 이미지 업로드: `POST /doUpload?dir=/image/` (multipart/form-data, 필드명 `file`, PNG 240x240, Content-Type `image/png`)
+- 이미지 전환: `GET /set?img=/image/{filename}` (업로드 후 현재 화면에 반영)
+- 테마 설정 (최초 1회): `GET /set?theme=3` (Ultra 기종은 theme=3)
+- 펌웨어 버그: 업로드 응답에서 400 "Duplicate Content-Length" / "Data after" 문자열이 나올 수 있음 → 로깅만 하고 무시(정상 업로드로 취급)
+
+### 구현 패턴
+```python
+import httpx
+from src.core.ports.display import DisplayPort
+
+class GeekMagicDisplayAdapter(DisplayPort):
+    UPLOAD_FILENAME = "tm.png"  # 고정 파일명으로 덮어쓰기
+
+    def __init__(self, base_url: str, timeout_sec: float = 3.0) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._timeout = timeout_sec
+        self._theme_set = False
+
+    async def push_png(self, png_bytes: bytes) -> bool:
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            if not self._theme_set:
+                try:
+                    await client.get(f"{self._base_url}/set?theme=3")
+                    self._theme_set = True
+                except httpx.HTTPError:
+                    pass  # 다음 주기에 재시도
+            files = {"file": (self.UPLOAD_FILENAME, png_bytes, "image/png")}
+            try:
+                r = await client.post(f"{self._base_url}/doUpload?dir=/image/", files=files)
+            except httpx.HTTPError as exc:
+                # 펌웨어가 malformed 응답을 내면 httpx가 RemoteProtocolError를 던지기도 함 → 업로드 자체는 성공일 수 있으므로 set 호출은 시도
+                logger.debug("upload malformed: %s (continuing)", exc)
+            try:
+                await client.get(f"{self._base_url}/set?img=/image/{self.UPLOAD_FILENAME}")
+            except httpx.HTTPError:
+                return False
+        return True
+```
+
+### 페이지 렌더러 (Pillow)
+- 4페이지 카루셀: SYSTEM / CLAUDE / OTHER / LOCAL_LLM
+- 페이지 전환: 5초마다 인덱스 회전 (`page = tick % 4`)
+- 공통 템플릿: 상단바(타이틀 + 인디케이터) + 항목 3개 (라벨 / 퍼센트 / 프로그레스 바)
+- 색상 팔레트: 배경 #0A0A0A, 정상 #10B981, 주의 #F59E0B, 경고 #F97316, 위험 #EF4444
+- 폰트: 번들된 기본 sans (영문 전용). 항목 라벨 20px, 퍼센트 36~40px bold, 타이틀 18px
+- 출력: `PIL.Image.save(buf, format="PNG")` → bytes
+
+### 데이터 소스
+- `app.state.monitor_service.latest` → `SystemSnapshot` (CPU/MEM/DISK %)
+- `app.state.usage_service.claude_web_latest` → `ClaudeWebUsage` (session/weekly/sonnet %)
+- `app.state.usage_service.latest.usages` → Codex/ZhipuAI 등 `TokenUsage` 리스트 (`quota_percentage` 사용)
+- `app.state.usage_service.copilot_api_latest.quotas` → `premium_interactions` quota의 `percent_used`
+- `app.state.usage_service.ollama_latest` → `OllamaUsage` (model, vram_percent, tok_per_sec)
+
+### 라이프사이클 통합
+- `src/main.py`의 lifespan에서 `GEEKMAGIC_ULTRA_IP` 설정이 있을 때만 adapter + 루프 task 생성
+- `asyncio.create_task(pusher.run_forever(app.state))`
+- shutdown 시 task cancel
 
 ## 공통 구현 원칙
 

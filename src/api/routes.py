@@ -104,6 +104,7 @@ async def get_config(request: Request) -> dict:
         "gateway_url": settings.openclaw_gateway_url or "",
         "ollama_base_url": settings.ollama_base_url or _DEFAULT_OLLAMA_BASE_URL,
         "gateway_configured": bool(settings.openclaw_api_key),
+        "geekmagic_ultra_url": settings.geekmagic_ultra_url or "",
     }
 
 
@@ -165,6 +166,13 @@ async def update_config(request: Request) -> dict:
         settings.ollama_base_url = body["ollama_base_url"] or _DEFAULT_OLLAMA_BASE_URL
         usage_svc.update_ollama_base_url(settings.ollama_base_url)
         env_updates["OLLAMA_BASE_URL"] = settings.ollama_base_url
+    if "geekmagic_ultra_url" in body:
+        new_url = (body["geekmagic_ultra_url"] or "").strip() or None
+        settings.geekmagic_ultra_url = new_url
+        env_updates["GEEKMAGIC_ULTRA_URL"] = new_url or ""
+        display_svc = getattr(request.app.state, "display_service", None)
+        if display_svc is not None and new_url:
+            display_svc.update_base_url(new_url)
 
     # Persist updated env-backed settings so they survive restarts.
     _persist_env_updates(env_updates)

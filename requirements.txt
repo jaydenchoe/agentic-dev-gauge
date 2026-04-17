@@ -6,3 +6,4 @@ psutil>=5.9,<6
 httpx>=0.27,<1
 websockets>=12,<14
 pycryptodome
+Pillow>=10,<13

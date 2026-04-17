@@ -22,11 +22,13 @@ from fastapi.staticfiles import StaticFiles
 from src.api.routes import router as api_router
 from src.api.websocket import router as ws_router, run_broadcast_loop
 from src.config import Settings
+from src.core.ports.display import DisplayPort
 from src.core.ports.metrics import MetricsPort
 from src.core.ports.notification import NotificationPort
 from src.core.ports.usage import UsagePort
 from src.chrome_launcher import launch_debug_chrome, launch_dashboard_app, shutdown_debug_chrome
 from src.services.alert_service import AlertService
+from src.services.display_service import DisplayService
 from src.services.monitor_service import MonitorService
 from src.services.usage_service import UsageService
 
@@ -111,6 +113,18 @@ def _build_notifier(settings: Settings) -> NotificationPort | None:
         return None
 
 
+def _build_display_adapter(settings: Settings) -> DisplayPort | None:
+    if not settings.geekmagic_ultra_url:
+        logger.info("GeekMagic display disabled — GEEKMAGIC_ULTRA_URL not set")
+        return None
+    try:
+        from src.adapters.display.geekmagic_adapter import GeekMagicDisplayAdapter
+        return GeekMagicDisplayAdapter(base_url=settings.geekmagic_ultra_url)
+    except (ImportError, AttributeError):
+        logger.warning("GeekMagic display adapter not available")
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
@@ -158,6 +172,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     usage_svc.start()
     broadcast_task = asyncio.create_task(run_broadcast_loop(app))
 
+    # Optional external display push (GeekMagic SmallTV Ultra)
+    display_adapter = _build_display_adapter(settings)
+    display_svc: DisplayService | None = None
+    if display_adapter is not None:
+        display_svc = DisplayService(
+            display_adapter,
+            monitor_svc,
+            usage_svc,
+            interval_sec=settings.geekmagic_interval_sec,
+        )
+        display_svc.start()
+        logger.info(
+            "GeekMagic display push enabled (url=%s, interval=%ss)",
+            settings.geekmagic_ultra_url,
+            settings.geekmagic_interval_sec,
+        )
+    app.state.display_service = display_svc
+
     # Launch dashboard in app mode (no address bar)
     dashboard_proc = None
     if settings.dashboard_app_auto_launch:
@@ -168,6 +200,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Shutdown
     broadcast_task.cancel()
+    if display_svc is not None:
+        await display_svc.stop()
     await monitor_svc.stop()
     await usage_svc.stop()
     shutdown_debug_chrome(chrome_proc)

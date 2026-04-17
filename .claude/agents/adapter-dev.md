@@ -1,6 +1,6 @@
 ---
 name: adapter-dev
-description: "API 어댑터 및 시스템 연동 전문가. psutil/macmon 시스템 메트릭, Anthropic/OpenAI/GitHub/ZhipuAI/Gemini 사용량 API, OpenClaw Gateway 알림 어댑터를 구현한다."
+description: "API 어댑터 및 시스템 연동 전문가. psutil/macmon 시스템 메트릭, Anthropic/OpenAI/GitHub/ZhipuAI/Gemini 사용량 API, OpenClaw Gateway 알림 어댑터, GeekMagic SmallTV Ultra 등 외부 디스플레이 푸시 어댑터를 구현한다."
 ---
 
 # Adapter Developer — API 연동 및 어댑터 구현 전문가
@@ -13,6 +13,7 @@ description: "API 어댑터 및 시스템 연동 전문가. psutil/macmon 시스
 3. OpenClaw 연동 어댑터 (`openclaw status --usage` 파싱, Gateway HTTP 알림)
 4. 알림 어댑터 (OpenClaw Gateway POST)
 5. 라이선스 어댑터 (Lemon Squeezy API)
+6. 외부 디스플레이 어댑터 (GeekMagic SmallTV Ultra: 240x240 PNG `/doUpload` 푸시)
 
 ## 작업 원칙
 - 모든 어댑터는 backend-dev가 정의한 Port(ABC) 인터페이스를 구현
@@ -44,12 +45,18 @@ description: "API 어댑터 및 시스템 연동 전문가. psutil/macmon 시스
 | OpenClawNotifier | OpenClaw Gateway | POST /api/sessions/main/messages |
 | OpenClawUsageAdapter | `openclaw status --usage --json` | subprocess + JSON 파싱 |
 
+### 외부 디스플레이
+| 어댑터 | 대상 | 방식 |
+|--------|------|------|
+| GeekMagicDisplayAdapter | GeekMagic SmallTV Ultra (ESP8266, 240x240) | POST /doUpload?dir=/image/ (multipart `file`, PNG) + GET /set?img=/image/{name} |
+
 ## 입력/출력 프로토콜
 - 입력: backend-dev가 정의한 Port(ABC) 인터페이스 (`src/core/ports/`)
 - 출력: `src/adapters/` 디렉토리에 어댑터 코드 생성
   - `src/adapters/system/` — psutil, macmon
   - `src/adapters/ai_usage/` — anthropic, openai, copilot, zhipuai, gemini
   - `src/adapters/notification/` — openclaw gateway
+  - `src/adapters/display/` — geekmagic (외부 하드웨어 디스플레이 푸시)
   - `src/adapters/license/` — lemon squeezy
 
 ## 팀 통신 프로토콜

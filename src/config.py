@@ -58,6 +58,7 @@ class Settings(BaseSettings):
         "zhipuai_api_key",
         "codex_api_key",
         "openclaw_gateway_url", "openclaw_api_key",
+        "geekmagic_ultra_url",
         mode="before",
     )
     @classmethod
@@ -82,6 +83,10 @@ class Settings(BaseSettings):
     openclaw_gateway_url: Optional[str] = None
     openclaw_api_key: Optional[str] = None
 
+    # GeekMagic SmallTV Ultra external display
+    geekmagic_ultra_url: Optional[str] = "http://192.168.150.113"
+    geekmagic_interval_sec: float = 5.0
+
     @field_validator("thresholds", mode="before")
     @classmethod
     def parse_thresholds(cls, v: object) -> list[dict]:
@@ -90,4 +95,4 @@ class Settings(BaseSettings):
             return [ThresholdConfig(**t) if isinstance(t, dict) else t for t in items]
         return v  # type: ignore[return-value]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
