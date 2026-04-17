@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # AI Usage API Keys (all optional)
     codex_api_key: Optional[str] = None
     zhipuai_api_key: Optional[str] = None
+    github_token: Optional[str] = None
 
     # Usage polling
     usage_interval_sec: float = 60
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
     @field_validator(
         "zhipuai_api_key",
         "codex_api_key",
+        "github_token",
         "openclaw_gateway_url", "openclaw_api_key",
         "geekmagic_ultra_url",
         mode="before",
