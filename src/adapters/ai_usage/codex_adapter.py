@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -25,7 +27,30 @@ class CodexUsageAdapter(UsagePort):
     def provider_name(self) -> str:
         return "codex"
 
+    def _check_jwt_expiry(self, token: str) -> str | None:
+        """Return 'Token expired (MMM DD)' string if JWT is expired, else None."""
+        try:
+            payload_b64 = token.split(".")[1]
+            payload_b64 += "=" * (4 - len(payload_b64) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+            exp = payload.get("exp")
+            if exp and datetime.now(tz=timezone.utc).timestamp() > exp:
+                exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
+                return f"Token expired ({exp_dt.strftime('%b %d')})"
+        except Exception:
+            pass
+        return None
+
     async def fetch_usage(self, api_key: str) -> list[TokenUsage]:
+        expired_msg = self._check_jwt_expiry(api_key)
+        if expired_msg:
+            logger.warning("Codex JWT token expired")
+            return [TokenUsage(
+                provider="codex", model="error",
+                input_tokens=0, output_tokens=0, total_tokens=0,
+                error=expired_msg,
+            )]
+
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(

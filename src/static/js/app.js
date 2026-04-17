@@ -10,6 +10,8 @@ const App = (() => {
   const codexUsageState = {};
   const CDP_TIMEOUT_MS = 30000;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+  const DEFAULT_OLLAMA2_BASE_URL = '';
+  const DEFAULT_OLLAMA3_BASE_URL = '';
 
   function init() {
     Settings.init();
@@ -33,6 +35,12 @@ const App = (() => {
       for (const t of config.thresholds) {
         thresholds[t.metric] = { warning: t.warning, critical: t.critical };
       }
+    }
+    if (config && Object.prototype.hasOwnProperty.call(config, 'ollama2_base_url')) {
+      setOllamaCardVisibility('cardOllama2', config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL);
+    }
+    if (config && Object.prototype.hasOwnProperty.call(config, 'ollama3_base_url')) {
+      setOllamaCardVisibility('cardOllama3', config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL);
     }
   }
 
@@ -72,13 +80,15 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes, ollama2Res, ollama3Res] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/settings'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
         fetch('/api/copilot-usage'),
         fetch('/api/ollama-usage'),
+        fetch('/api/ollama2-usage'),
+        fetch('/api/ollama3-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -97,6 +107,16 @@ const App = (() => {
         if (ollamaInput) {
           ollamaInput.value = config.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
         }
+        const ollama2Input = document.getElementById('ollama2BaseUrl');
+        if (ollama2Input) {
+          ollama2Input.value = config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL;
+        }
+        const ollama3Input = document.getElementById('ollama3BaseUrl');
+        if (ollama3Input) {
+          ollama3Input.value = config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL;
+        }
+        setOllamaCardVisibility('cardOllama2', config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL);
+        setOllamaCardVisibility('cardOllama3', config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL);
       }
 
       if (cwRes.status === 'fulfilled' && cwRes.value.ok) {
@@ -117,6 +137,16 @@ const App = (() => {
       if (ollamaRes.status === 'fulfilled' && ollamaRes.value.ok) {
         const data = await ollamaRes.value.json();
         handleOllama(data.data);
+      }
+
+      if (ollama2Res.status === 'fulfilled' && ollama2Res.value.ok) {
+        const data = await ollama2Res.value.json();
+        handleOllama2(data.data);
+      }
+
+      if (ollama3Res.status === 'fulfilled' && ollama3Res.value.ok) {
+        const data = await ollama3Res.value.json();
+        handleOllama3(data.data);
       }
     } catch (e) {
       // Server not running yet
@@ -313,6 +343,14 @@ const App = (() => {
       handleOllama(data.ollama);
     }
 
+    if (data.ollama2) {
+      handleOllama2(data.ollama2);
+    }
+
+    if (data.ollama3) {
+      handleOllama3(data.ollama3);
+    }
+
     // Process per-provider token usages
     const usages = data.usages || [];
     for (const usage of usages) {
@@ -329,6 +367,18 @@ const App = (() => {
 
   function handleCodexUsage(usage) {
     if (!usage) return;
+
+    if (usage.model === 'error') {
+      ['detailCodexSession', 'detailCodexWeekly'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = usage.error || 'Token expired';
+      });
+      ['valCodexSession', 'valCodexWeekly'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '--<span class="bar__unit">%</span>';
+      });
+      return;
+    }
 
     codexUsageState[usage.model] = usage;
 
@@ -426,6 +476,30 @@ const App = (() => {
 
   // --- Ollama Handler ---
 
+  function clearOllamaCard(cardId, fillEl) {
+    if (fillEl) {
+      fillEl.style.width = '0%';
+      fillEl.className = 'bar__fill bar__fill--skeleton';
+    }
+
+    const cardEl = document.getElementById(cardId);
+    if (cardEl) {
+      cardEl.className = cardEl.className.replace(/\s*card--(warning|critical)/g, '');
+    }
+  }
+
+  function setOllamaCardVisibility(cardId, baseUrl) {
+    const cardEl = document.getElementById(cardId);
+    if (!cardEl) return;
+    cardEl.style.display = baseUrl && baseUrl.trim() ? '' : 'none';
+  }
+
+  function setOllamaLabel(cardId, label, model) {
+    const labelEl = document.querySelector(`#${cardId} .bar__label`);
+    if (!labelEl) return;
+    labelEl.textContent = model ? `${label} · ${model}` : label;
+  }
+
   function handleOllama(data) {
     if (!data) return;
 
@@ -435,44 +509,124 @@ const App = (() => {
     const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
 
     if (!data.available) {
-      if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
+      setOllamaLabel('cardOllama', baseUrlLabel);
+      clearOllamaCard('cardOllama', fillEl);
       if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = baseUrlLabel;
+      if (detailEl) detailEl.textContent = '';
       return;
     }
 
     if (!data.model) {
-      if (fillEl) { fillEl.style.width = '0%'; fillEl.className = 'bar__fill bar__fill--skeleton'; }
+      setOllamaLabel('cardOllama', baseUrlLabel);
+      clearOllamaCard('cardOllama', fillEl);
       if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = baseUrlLabel;
+      if (detailEl) detailEl.textContent = '';
       return;
     }
 
-    // Progress bar: VRAM %
-    const vramPct = data.vram_percent || 0;
-    const th = thresholds.memory_percent || { warning: 80, critical: 95 };
-    const level = Charts.getLevel(vramPct, th.warning, th.critical);
-    updateBar('fillOllama', 'valOllama', 'cardOllama', vramPct, level);
+    setOllamaLabel('cardOllama', data.model);
+    clearOllamaCard('cardOllama', fillEl);
 
-    // Show tok/s and VRAM % together
     if (valEl) {
       if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tk/s</span> · ' + Math.round(vramPct) + '<span class="bar__unit">%</span>';
+        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value';
       } else {
-        valEl.innerHTML = Math.round(vramPct) + '<span class="bar__unit">%</span>';
+        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value bar__value--muted';
       }
-      valEl.className = 'bar__value';
-      if (level === 'warning') valEl.classList.add('bar__value--warning');
-      if (level === 'critical') valEl.classList.add('bar__value--critical');
     }
 
-    // Detail: model name + VRAM GB (%) + benchmark time
     if (detailEl) {
-      let parts = [data.model];
-      if (baseUrlLabel) parts.push(baseUrlLabel);
-      if (data.vram_gb) parts.push(data.vram_gb + ' GB (' + Math.round(vramPct) + '%)');
-      if (data.benchmark_ago) parts.push(data.benchmark_ago);
-      detailEl.textContent = parts.join(' · ');
+      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
+    }
+  }
+
+  function handleOllama2(data) {
+    if (!data) return;
+
+    setOllamaCardVisibility('cardOllama2', data.base_url);
+
+    const fillEl = document.getElementById('fillOllama2');
+    const valEl = document.getElementById('valOllama2');
+    const detailEl = document.getElementById('detailOllama2');
+    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
+
+    if (!data.available) {
+      setOllamaLabel('cardOllama2', baseUrlLabel);
+      clearOllamaCard('cardOllama2', fillEl);
+      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    if (!data.model) {
+      setOllamaLabel('cardOllama2', baseUrlLabel);
+      clearOllamaCard('cardOllama2', fillEl);
+      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    setOllamaLabel('cardOllama2', data.model);
+    clearOllamaCard('cardOllama2', fillEl);
+
+    if (valEl) {
+      if (data.tok_per_sec != null) {
+        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value';
+      } else {
+        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value bar__value--muted';
+      }
+    }
+
+    if (detailEl) {
+      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
+    }
+  }
+
+  function handleOllama3(data) {
+    if (!data) return;
+
+    setOllamaCardVisibility('cardOllama3', data.base_url);
+
+    const fillEl = document.getElementById('fillOllama3');
+    const valEl = document.getElementById('valOllama3');
+    const detailEl = document.getElementById('detailOllama3');
+    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
+
+    if (!data.available) {
+      setOllamaLabel('cardOllama3', baseUrlLabel);
+      clearOllamaCard('cardOllama3', fillEl);
+      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    if (!data.model) {
+      setOllamaLabel('cardOllama3', baseUrlLabel);
+      clearOllamaCard('cardOllama3', fillEl);
+      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    setOllamaLabel('cardOllama3', data.model);
+    clearOllamaCard('cardOllama3', fillEl);
+
+    if (valEl) {
+      if (data.tok_per_sec != null) {
+        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value';
+      } else {
+        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
+        valEl.className = 'bar__value bar__value--muted';
+      }
+    }
+
+    if (detailEl) {
+      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
     }
   }
 
