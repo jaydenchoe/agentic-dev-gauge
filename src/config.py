@@ -58,6 +58,7 @@ class Settings(BaseSettings):
         "zhipuai_api_key",
         "codex_api_key",
         "openclaw_gateway_url", "openclaw_api_key",
+        "geekmagic_ultra_url",
         mode="before",
     )
     @classmethod
@@ -81,6 +82,10 @@ class Settings(BaseSettings):
     # OpenClaw Gateway (optional)
     openclaw_gateway_url: Optional[str] = None
     openclaw_api_key: Optional[str] = None
+
+    # GeekMagic SmallTV Ultra external display (optional)
+    geekmagic_ultra_url: Optional[str] = None
+    geekmagic_interval_sec: float = 5.0
 
     @field_validator("thresholds", mode="before")
     @classmethod
