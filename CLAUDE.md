@@ -27,6 +27,10 @@ _workspace/      # Architecture docs, QA reports
 - External API calls must be async (httpx)
 - Core domain must not know about external dependencies (Hexagonal principle)
 
+## Server Startup
+- Always start the server with `bash run.sh`, not `python src/main.py` or `python3 src/main.py`
+- `run.sh` creates `.venv` if needed, installs deps, and runs via `.venv/bin/python` — avoids `python` not found errors on macOS
+
 ## Behavior Rules (Project-Specific)
 - **Trust dashboard values**: When user asks about a dashboard value, do not contradict it with raw CLI tool output (df, free, etc.). Explain how our code calculates the value first.
 - **Do not pkill debug Chrome**: Debug Chrome runs as a separate instance. Never kill Chrome processes with pkill.

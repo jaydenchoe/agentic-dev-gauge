@@ -68,6 +68,7 @@ class TokenUsage:
     quota_percentage: Optional[float] = None
     reset_text: Optional[str] = None
     plan_type: Optional[str] = None
+    error: Optional[str] = None
 
 
 @dataclass
