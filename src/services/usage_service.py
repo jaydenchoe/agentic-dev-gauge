@@ -48,6 +48,7 @@ class UsageService:
         claude_web_cdp_port: int = 9222,
         claude_web_interval: float = 300.0,
         copilot_api_interval: float = 300.0,
+        github_token: Optional[str] = None,
         ollama_status_interval: float = 60.0,
         ollama_benchmark_interval: float = 300.0,
         ollama_base_url: str = _DEFAULT_OLLAMA_BASE_URL,
@@ -63,6 +64,7 @@ class UsageService:
         self._claude_web_latest: Optional[ClaudeWebUsage] = None
         self._claude_web_task: Optional[asyncio.Task] = None
         # Copilot API usage
+        self._github_token = github_token
         self._copilot_api_interval = copilot_api_interval
         self._copilot_api_latest: Optional[CopilotApiUsage] = None
         self._copilot_api_task: Optional[asyncio.Task] = None
@@ -150,7 +152,7 @@ class UsageService:
     async def _copilot_api_loop(self) -> None:
         while True:
             try:
-                result = await fetch_copilot_api_usage()
+                result = await fetch_copilot_api_usage(github_token=self._github_token)
                 if result:
                     self._copilot_api_latest = result
                     premium = next((q for q in result.quotas if q.quota_id == "premium_interactions"), None)
