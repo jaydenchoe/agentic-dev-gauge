@@ -6,6 +6,7 @@ const Settings = (() => {
   let modal = null;
   let isOpen = false;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+  const DEFAULT_GEEKMAGIC_URL = 'http://192.168.150.113';
 
   const API_KEY_FIELDS = [
     { id: 'keyCodex', key: 'codex_api_key', provider: 'codex' },
@@ -76,6 +77,8 @@ const Settings = (() => {
       if (data.gateway_configured) {
         document.getElementById('gatewayKey').placeholder = '••••••••  (configured)';
       }
+      document.getElementById('geekmagicUltraUrl').value =
+        data.geekmagic_ultra_url || DEFAULT_GEEKMAGIC_URL;
     } catch (e) {
       // Config endpoint not available yet
     }
@@ -105,9 +108,11 @@ const Settings = (() => {
     const ollamaBaseUrl = document.getElementById('ollamaBaseUrl').value.trim();
     const gwUrl = document.getElementById('gatewayUrl').value.trim();
     const gwKey = document.getElementById('gatewayKey').value.trim();
+    const geekmagicUrl = document.getElementById('geekmagicUltraUrl').value.trim();
     config.ollama_base_url = ollamaBaseUrl || DEFAULT_OLLAMA_BASE_URL;
     if (gwUrl) config.gateway_url = gwUrl;
     if (gwKey) config.gateway_key = gwKey;
+    config.geekmagic_ultra_url = geekmagicUrl;
 
     try {
       const res = await fetch('/api/settings', {

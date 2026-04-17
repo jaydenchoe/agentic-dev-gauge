@@ -83,8 +83,8 @@ class Settings(BaseSettings):
     openclaw_gateway_url: Optional[str] = None
     openclaw_api_key: Optional[str] = None
 
-    # GeekMagic SmallTV Ultra external display (optional)
-    geekmagic_ultra_url: Optional[str] = None
+    # GeekMagic SmallTV Ultra external display
+    geekmagic_ultra_url: Optional[str] = "http://192.168.150.113"
     geekmagic_interval_sec: float = 5.0
 
     @field_validator("thresholds", mode="before")

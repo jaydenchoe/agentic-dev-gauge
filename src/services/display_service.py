@@ -45,6 +45,11 @@ class DisplayService:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
 
+    def update_base_url(self, url: str) -> None:
+        setter = getattr(self._adapter, "set_base_url", None)
+        if callable(setter):
+            setter(url)
+
     async def stop(self) -> None:
         if self._task is not None and not self._task.done():
             self._task.cancel()

@@ -24,6 +24,12 @@ class GeekMagicDisplayAdapter(DisplayPort):
         self._timeout = timeout_sec
         self._theme_set = False
 
+    def set_base_url(self, base_url: str) -> None:
+        new_base = base_url.rstrip("/")
+        if new_base != self._base_url:
+            self._base_url = new_base
+            self._theme_set = False
+
     async def push_png(self, png_bytes: bytes) -> bool:
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             if not self._theme_set:
