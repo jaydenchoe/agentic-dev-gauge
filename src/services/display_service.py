@@ -1,4 +1,7 @@
-"""DisplayService — render dashboard pages and push to an external display on a timer."""
+"""DisplayService — render dashboard pages and push to an external display on a timer.
+
+V4 carousel: 5 pages (CLOCK added as page 0).
+"""
 
 from __future__ import annotations
 
@@ -9,23 +12,24 @@ from typing import TYPE_CHECKING, Optional
 from src.adapters.display.renderer import (
     gif_bytes,
     render_claude,
+    render_clock,
     render_local_llm,
     render_other,
     render_system,
 )
 from src.core.ports.display import DisplayPort
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+if TYPE_CHECKING:  # pragma: no cover
     from src.services.monitor_service import MonitorService
     from src.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
-_PAGE_COUNT = 4
+_PAGE_COUNT = 5
 
 
 class DisplayService:
-    """Rotate through 4 carousel pages (SYSTEM / CLAUDE / OTHER / LOCAL LLM)."""
+    """Rotate through 5 carousel pages (CLOCK / SYSTEM / CLAUDE / OTHER / LOCAL LLM)."""
 
     def __init__(
         self,
@@ -76,12 +80,22 @@ class DisplayService:
 
     def _render_page(self, page: int):
         if page == 0:
-            return self._render_system()
+            return self._render_clock()
         if page == 1:
-            return self._render_claude()
+            return self._render_system()
         if page == 2:
+            return self._render_claude()
+        if page == 3:
             return self._render_other()
         return self._render_local_llm()
+
+    def _render_clock(self):
+        c = self._usage.claude_web_latest
+        snap = self._monitor.latest
+        session = c.session_used_percent if c else None
+        weekly = c.weekly_all_used_percent if c else None
+        disk = snap.disk.usage_percent if snap else None
+        return render_clock(session_pct=session, weekly_pct=weekly, disk_pct=disk)
 
     def _render_system(self):
         snap = self._monitor.latest
