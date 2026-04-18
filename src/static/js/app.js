@@ -10,8 +10,9 @@ const App = (() => {
   const codexUsageState = {};
   const CDP_TIMEOUT_MS = 30000;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
-  const DEFAULT_OLLAMA2_BASE_URL = '';
-  const DEFAULT_OLLAMA3_BASE_URL = '';
+  const trendData = {};
+  const TREND_MAX = 40;
+  let startTime = Date.now();
 
   function init() {
     Settings.init();
@@ -19,6 +20,29 @@ const App = (() => {
     connectWebSocket();
     fetchInitialData();
     startCdpTimeout();
+    startClock();
+  }
+
+  function startClock() {
+    function tick() {
+      const t = new Date();
+      const clockEl = document.getElementById('clock');
+      if (clockEl) clockEl.textContent = t.toTimeString().slice(0, 8);
+
+      const dateEl = document.getElementById('topbarDate');
+      if (dateEl && !dateEl.textContent) {
+        dateEl.textContent = ' · ' + t.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+      }
+
+      const uptimeEl = document.getElementById('uptime');
+      if (uptimeEl) {
+        const s = Math.floor((Date.now() - startTime) / 1000);
+        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+        uptimeEl.textContent = [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
+      }
+    }
+    setInterval(tick, 1000);
+    tick();
   }
 
   function loadThresholds() {
@@ -35,12 +59,6 @@ const App = (() => {
       for (const t of config.thresholds) {
         thresholds[t.metric] = { warning: t.warning, critical: t.critical };
       }
-    }
-    if (config && Object.prototype.hasOwnProperty.call(config, 'ollama2_base_url')) {
-      setOllamaCardVisibility('cardOllama2', config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL);
-    }
-    if (config && Object.prototype.hasOwnProperty.call(config, 'ollama3_base_url')) {
-      setOllamaCardVisibility('cardOllama3', config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL);
     }
   }
 
@@ -62,17 +80,11 @@ const App = (() => {
 
   function updateConnectionStatus(state) {
     const el = document.getElementById('connectionStatus');
-    el.className = 'connection-status';
-    const textEl = el.querySelector('.connection-status__text');
-
+    if (!el) return;
     if (state === 'connected') {
-      el.classList.add('connection-status--connected');
-      textEl.textContent = 'Live';
-    } else if (state === 'reconnecting') {
-      el.classList.add('connection-status--reconnecting');
-      textEl.textContent = 'Reconnecting...';
+      el.classList.remove('disconnected');
     } else {
-      textEl.textContent = 'Disconnected';
+      el.classList.add('disconnected');
     }
   }
 
@@ -80,15 +92,13 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes, ollama2Res, ollama3Res] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/settings'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
         fetch('/api/copilot-usage'),
         fetch('/api/ollama-usage'),
-        fetch('/api/ollama2-usage'),
-        fetch('/api/ollama3-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -104,19 +114,7 @@ const App = (() => {
           }
         }
         const ollamaInput = document.getElementById('ollamaBaseUrl');
-        if (ollamaInput) {
-          ollamaInput.value = config.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
-        }
-        const ollama2Input = document.getElementById('ollama2BaseUrl');
-        if (ollama2Input) {
-          ollama2Input.value = config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL;
-        }
-        const ollama3Input = document.getElementById('ollama3BaseUrl');
-        if (ollama3Input) {
-          ollama3Input.value = config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL;
-        }
-        setOllamaCardVisibility('cardOllama2', config.ollama2_base_url || DEFAULT_OLLAMA2_BASE_URL);
-        setOllamaCardVisibility('cardOllama3', config.ollama3_base_url || DEFAULT_OLLAMA3_BASE_URL);
+        if (ollamaInput) ollamaInput.value = config.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
       }
 
       if (cwRes.status === 'fulfilled' && cwRes.value.ok) {
@@ -138,16 +136,6 @@ const App = (() => {
         const data = await ollamaRes.value.json();
         handleOllama(data.data);
       }
-
-      if (ollama2Res.status === 'fulfilled' && ollama2Res.value.ok) {
-        const data = await ollama2Res.value.json();
-        handleOllama2(data.data);
-      }
-
-      if (ollama3Res.status === 'fulfilled' && ollama3Res.value.ok) {
-        const data = await ollama3Res.value.json();
-        handleOllama3(data.data);
-      }
     } catch (e) {
       // Server not running yet
     }
@@ -162,21 +150,39 @@ const App = (() => {
 
     if (fill) {
       fill.style.width = Math.min(pct, 100) + '%';
-      fill.className = 'bar__fill';
-      if (level === 'warning') fill.classList.add('bar__fill--warning');
-      if (level === 'critical') fill.classList.add('bar__fill--critical');
+      fill.classList.remove('skeleton');
     }
     if (val) {
-      val.innerHTML = `${Math.round(pct)}<span class="bar__unit">%</span>`;
-      val.className = 'bar__value';
-      if (level === 'warning') val.classList.add('bar__value--warning');
-      if (level === 'critical') val.classList.add('bar__value--critical');
+      val.innerHTML = `${Math.round(pct)}<em>%</em>`;
+      val.className = 'bar-value tnum';
     }
     if (card) {
-      card.className = card.className.replace(/\s*card--(warning|critical)/g, '');
-      if (level === 'warning') card.classList.add('card--warning');
-      if (level === 'critical') card.classList.add('card--critical');
+      card.classList.remove('warn', 'crit');
+      if (level === 'warning') card.classList.add('warn');
+      if (level === 'critical') card.classList.add('crit');
     }
+
+    // Update sparkline trend
+    const trendId = 'trend' + fillId.replace(/^fill/, '');
+    if (!trendData[trendId]) trendData[trendId] = [];
+    trendData[trendId].push(pct);
+    if (trendData[trendId].length > TREND_MAX) trendData[trendId].shift();
+    updateTrend(trendId, trendData[trendId]);
+  }
+
+  function updateTrend(trendId, history) {
+    const svg = document.getElementById(trendId);
+    if (!svg || history.length < 2) return;
+    const path = svg.querySelector('path');
+    if (!path) return;
+    const w = 80, h = 30;
+    const dx = w / (history.length - 1);
+    const d = history.map((v, i) => {
+      const x = (i * dx).toFixed(1);
+      const y = (h - Math.max(0, Math.min(100, v)) / 100 * h).toFixed(1);
+      return (i === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join('');
+    path.setAttribute('d', d);
   }
 
   // --- System Metrics Handler ---
@@ -220,11 +226,6 @@ const App = (() => {
       }
     }
 
-    // Network
-    if (data.network) {
-      document.getElementById('netSent').textContent = Charts.formatBytes(data.network.bytes_sent_per_sec);
-      document.getElementById('netRecv').textContent = Charts.formatBytes(data.network.bytes_recv_per_sec);
-    }
   }
 
   // --- CDP Timeout ---
@@ -343,14 +344,6 @@ const App = (() => {
       handleOllama(data.ollama);
     }
 
-    if (data.ollama2) {
-      handleOllama2(data.ollama2);
-    }
-
-    if (data.ollama3) {
-      handleOllama3(data.ollama3);
-    }
-
     // Process per-provider token usages
     const usages = data.usages || [];
     for (const usage of usages) {
@@ -375,7 +368,7 @@ const App = (() => {
       });
       ['valCodexSession', 'valCodexWeekly'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = '--<span class="bar__unit">%</span>';
+        if (el) el.innerHTML = '--<em>%</em>';
       });
       return;
     }
@@ -460,7 +453,19 @@ const App = (() => {
     }
 
     if (model.startsWith('time-limit')) {
-      return;
+      // MCP tool calls (5h rolling)
+      if (pct != null) {
+        const level = Charts.getLevel(pct, llmThreshold().warning, llmThreshold().critical);
+        updateBar('fillZhipuaiMcp', 'valZhipuaiMcp', 'cardZhipuaiMcp', pct, level);
+      }
+      const detailEl = document.getElementById('detailZhipuaiMcp');
+      if (detailEl) {
+        const used = usage.total_tokens || 0;
+        const limit = usage.quota_limit;
+        let text = limit ? `${used.toLocaleString()} / ${limit.toLocaleString()}` : '';
+        if (usage.reset_text) text = (text ? text + ' · ' : '') + usage.reset_text;
+        detailEl.textContent = text;
+      }
     } else if (model.startsWith('tokens-limit')) {
       // Monthly token usage
       if (pct != null) {
@@ -476,171 +481,44 @@ const App = (() => {
 
   // --- Ollama Handler ---
 
-  function clearOllamaCard(cardId, fillEl) {
-    if (fillEl) {
-      fillEl.style.width = '0%';
-      fillEl.className = 'bar__fill bar__fill--skeleton';
-    }
-
-    const cardEl = document.getElementById(cardId);
-    if (cardEl) {
-      cardEl.className = cardEl.className.replace(/\s*card--(warning|critical)/g, '');
-    }
-  }
-
-  function setOllamaCardVisibility(cardId, baseUrl) {
-    const cardEl = document.getElementById(cardId);
-    if (!cardEl) return;
-    cardEl.style.display = baseUrl && baseUrl.trim() ? '' : 'none';
-  }
-
-  function setOllamaLabel(cardId, label, model) {
-    const labelEl = document.querySelector(`#${cardId} .bar__label`);
-    if (!labelEl) return;
-    labelEl.textContent = model ? `${label} · ${model}` : label;
-  }
-
   function handleOllama(data) {
     if (!data) return;
 
-    const fillEl = document.getElementById('fillOllama');
+    const card = document.getElementById('cardOllama');
     const valEl = document.getElementById('valOllama');
     const detailEl = document.getElementById('detailOllama');
-    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
 
     if (!data.available) {
-      setOllamaLabel('cardOllama', baseUrlLabel);
-      clearOllamaCard('cardOllama', fillEl);
-      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
+      if (card) card.classList.add('idle');
+      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar-value muted'; }
       if (detailEl) detailEl.textContent = '';
       return;
     }
 
     if (!data.model) {
-      setOllamaLabel('cardOllama', baseUrlLabel);
-      clearOllamaCard('cardOllama', fillEl);
-      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
+      if (card) card.classList.add('idle');
+      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar-value muted'; }
       if (detailEl) detailEl.textContent = '';
       return;
     }
 
-    setOllamaLabel('cardOllama', data.model);
-    clearOllamaCard('cardOllama', fillEl);
+    if (card) card.classList.remove('idle');
 
     if (valEl) {
       if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value';
+        valEl.innerHTML = data.tok_per_sec + '<em>tok/s</em>';
+        valEl.className = 'bar-value tnum';
       } else {
-        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value bar__value--muted';
+        valEl.textContent = 'ready';
+        valEl.className = 'bar-value muted';
       }
     }
 
     if (detailEl) {
-      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
-    }
-  }
-
-  function handleOllama2(data) {
-    if (!data) return;
-
-    setOllamaCardVisibility('cardOllama2', data.base_url);
-
-    const fillEl = document.getElementById('fillOllama2');
-    const valEl = document.getElementById('valOllama2');
-    const detailEl = document.getElementById('detailOllama2');
-    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
-
-    if (!data.available) {
-      setOllamaLabel('cardOllama2', baseUrlLabel);
-      clearOllamaCard('cardOllama2', fillEl);
-      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    if (!data.model) {
-      setOllamaLabel('cardOllama2', baseUrlLabel);
-      clearOllamaCard('cardOllama2', fillEl);
-      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    setOllamaLabel('cardOllama2', data.model);
-    clearOllamaCard('cardOllama2', fillEl);
-
-    if (valEl) {
-      if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value';
-      } else {
-        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value bar__value--muted';
-      }
-    }
-
-    if (detailEl) {
-      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
-    }
-  }
-
-  function handleOllama3(data) {
-    if (!data) return;
-
-    setOllamaCardVisibility('cardOllama3', data.base_url);
-
-    const fillEl = document.getElementById('fillOllama3');
-    const valEl = document.getElementById('valOllama3');
-    const detailEl = document.getElementById('detailOllama3');
-    const baseUrlLabel = formatOllamaBaseUrl(data.base_url);
-
-    if (!data.available) {
-      setOllamaLabel('cardOllama3', baseUrlLabel);
-      clearOllamaCard('cardOllama3', fillEl);
-      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    if (!data.model) {
-      setOllamaLabel('cardOllama3', baseUrlLabel);
-      clearOllamaCard('cardOllama3', fillEl);
-      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar__value bar__value--muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    setOllamaLabel('cardOllama3', data.model);
-    clearOllamaCard('cardOllama3', fillEl);
-
-    if (valEl) {
-      if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + ' <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value';
-      } else {
-        valEl.innerHTML = '-- <span class="bar__unit">tok/s</span>';
-        valEl.className = 'bar__value bar__value--muted';
-      }
-    }
-
-    if (detailEl) {
-      detailEl.textContent = baseUrlLabel + (data.benchmark_ago ? ` · ${data.benchmark_ago}` : '');
-    }
-  }
-
-  function formatOllamaBaseUrl(baseUrl) {
-    if (!baseUrl) return '';
-    try {
-      const parsed = new URL(baseUrl.includes('://') ? baseUrl : `http://${baseUrl}`);
-      if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') {
-        return 'local';
-      }
-      const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
-      return `${parsed.hostname}:${port}`;
-    } catch (e) {
-      return baseUrl;
+      const parts = [data.model];
+      if (data.vram_gb) parts.push(data.vram_gb + ' GB');
+      if (data.benchmark_ago) parts.push(data.benchmark_ago);
+      detailEl.textContent = parts.join(' · ');
     }
   }
 

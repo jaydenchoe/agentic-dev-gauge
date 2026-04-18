@@ -3,271 +3,387 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agentic Dev Gauge</title>
+  <title>Token Monitor</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <header class="header">
-    <span class="connection-status" id="connectionStatus" title="Disconnected">
-      <span class="connection-status__dot"></span>
-      <span class="connection-status__text">Disconnected</span>
-    </span>
-    <div style="display:flex;gap:4px;">
-      <button class="btn btn--icon" id="btnRefresh" title="Refresh" aria-label="Refresh" onclick="location.reload()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand"><span class="brand-dot"></span>Token Monitor</span>
+      <span class="topbar-sep">·</span>
+      <span class="status-chip" id="connectionStatus">Live · <span id="clock" class="tnum">--:--:--</span></span>
+    </div>
+    <div class="mode-title">vitals<span class="topbar-date" id="topbarDate"></span></div>
+    <div class="topbar-right">
+      <span class="topbar-uptime">UPTIME <b id="uptime" class="tnum">--:--:--</b></span>
+      <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
-      <button class="btn btn--icon" id="btnSettings" title="Settings" aria-label="Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <button class="icon-btn" id="btnRefresh" title="Refresh" aria-label="Refresh" onclick="location.reload()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
     </div>
   </header>
 
   <main class="main">
-    <!-- System Section -->
-    <section class="section section--system">
-      <div class="section__header">System</div>
-      <div class="section__grid section__grid--3col">
-        <div class="card" id="cardCpu" data-metric="cpu_percent">
-          <div class="bar">
-            <div class="bar__fill" id="fillCpu"></div>
-            <span class="bar__label">CPU</span>
-            <span class="bar__value" id="valCpu">0<span class="bar__unit">%</span></span>
+    <div class="wrap">
+
+      <!-- System -->
+      <section class="sec" id="secSystem">
+        <div class="sec-head">
+          <span class="sec-name">System</span>
+          <span class="sec-rule"></span>
+          <span class="sec-meta">Apple Silicon</span>
+        </div>
+        <div class="grid-3">
+          <div class="bar sys" id="cardCpu">
+            <div class="bar-fill" id="fillCpu" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendCpu" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">CPU</span>
+              <span class="bar-value tnum" id="valCpu">0<em>%</em></span>
+              <span class="bar-detail" id="detailCpu"></span>
+            </div>
+          </div>
+
+          <div class="bar sys" id="cardMemory">
+            <div class="bar-fill" id="fillMemory" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendMemory" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Memory</span>
+              <span class="bar-value tnum" id="valMemory">0<em>%</em></span>
+              <span class="bar-detail" id="memDetail"></span>
+            </div>
+          </div>
+
+          <div class="bar sys" id="cardDisk">
+            <div class="bar-fill" id="fillDisk" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendDisk" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Disk</span>
+              <span class="bar-value tnum" id="valDisk">0<em>%</em></span>
+              <span class="bar-detail" id="diskDetail"></span>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="card" id="cardMemory" data-metric="memory_percent">
-          <div class="bar">
-            <div class="bar__fill" id="fillMemory"></div>
-            <span class="bar__label">Memory</span>
-            <span class="bar__detail" id="memDetail"></span>
-            <span class="bar__value" id="valMemory">0<span class="bar__unit">%</span></span>
+      <!-- Claude -->
+      <section class="sec" id="secClaude">
+        <div class="sec-head">
+          <span class="sec-name">
+            Claude
+            <span class="plan-badge claude" id="claudeWebPlan"></span>
+            <span class="plan-badge dim" id="claudeWebDisconnected" style="display:none;">CDP Disconnected</span>
+          </span>
+          <span class="sec-rule"></span>
+          <span class="sec-meta">CDP scrape · <b>4 quotas</b></span>
+        </div>
+        <div class="grid-4" id="cardClaudeBrand">
+          <div class="bar claude" id="cardClaudeSession">
+            <div class="bar-fill skeleton" id="fillClaudeSession" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendClaudeSession" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Session</span>
+              <span class="bar-value tnum muted" id="valClaudeSession">--<em>%</em></span>
+              <span class="bar-detail" id="detailClaudeSession"></span>
+            </div>
+          </div>
+
+          <div class="bar claude" id="cardClaudeWeekly">
+            <div class="bar-fill skeleton" id="fillClaudeWeekly" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendClaudeWeekly" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Weekly</span>
+              <span class="bar-value tnum muted" id="valClaudeWeekly">--<em>%</em></span>
+              <span class="bar-detail" id="detailClaudeWeekly"></span>
+            </div>
+          </div>
+
+          <div class="bar claude" id="cardClaudeSonnet">
+            <div class="bar-fill skeleton" id="fillClaudeSonnet" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendClaudeSonnet" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Sonnet</span>
+              <span class="bar-value tnum muted" id="valClaudeSonnet">--<em>%</em></span>
+              <span class="bar-detail" id="detailClaudeSonnet"></span>
+            </div>
+          </div>
+
+          <div class="bar claude" id="cardClaudeExtra">
+            <div class="bar-fill skeleton" id="fillClaudeExtra" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <svg class="bar-trend" id="trendClaudeExtra" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+            <div class="bar-body">
+              <span class="bar-label">Extra</span>
+              <span class="bar-value tnum muted" id="valClaudeExtra">--<em>%</em></span>
+              <span class="bar-detail" id="detailClaudeExtra"></span>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="card" id="cardDisk" data-metric="disk_percent">
-          <div class="bar">
-            <div class="bar__fill" id="fillDisk"></div>
-            <span class="bar__label">Disk</span>
-            <span class="bar__detail" id="diskDetail"></span>
-            <span class="bar__value" id="valDisk">0<span class="bar__unit">%</span></span>
+      <!-- Codex · Copilot · ZhipuAI -->
+      <div class="row-3provider">
+        <section class="sec" id="secCodex">
+          <div class="sec-head">
+            <span class="sec-name">Codex <span class="plan-badge codex" id="codexPlan"></span></span>
+            <span class="sec-rule"></span>
           </div>
-        </div>
+          <div class="grid-2">
+            <div class="bar codex" id="cardCodexSession">
+              <div class="bar-fill skeleton" id="fillCodexSession" style="width:0%"></div>
+              <div class="bar-ticks">
+                <div class="bar-tick" style="left:25%"></div>
+                <div class="bar-tick" style="left:50%"></div>
+                <div class="bar-tick" style="left:75%"></div>
+              </div>
+              <svg class="bar-trend" id="trendCodexSession" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+              <div class="bar-body">
+                <span class="bar-label">Session</span>
+                <span class="bar-value tnum muted" id="valCodexSession">--<em>%</em></span>
+                <span class="bar-detail" id="detailCodexSession"></span>
+              </div>
+            </div>
 
+            <div class="bar codex" id="cardCodexWeekly">
+              <div class="bar-fill skeleton" id="fillCodexWeekly" style="width:0%"></div>
+              <div class="bar-ticks">
+                <div class="bar-tick" style="left:25%"></div>
+                <div class="bar-tick" style="left:50%"></div>
+                <div class="bar-tick" style="left:75%"></div>
+              </div>
+              <svg class="bar-trend" id="trendCodexWeekly" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+              <div class="bar-body">
+                <span class="bar-label">Weekly</span>
+                <span class="bar-value tnum muted" id="valCodexWeekly">--<em>%</em></span>
+                <span class="bar-detail" id="detailCodexWeekly"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sec" id="secCopilot">
+          <div class="sec-head">
+            <span class="sec-name">Copilot <span class="plan-badge copilot" id="copilotPlan"></span></span>
+            <span class="sec-rule"></span>
+          </div>
+          <div class="grid-1">
+            <div class="bar copilot" id="cardCopilotPremium">
+              <div class="bar-fill skeleton" id="fillCopilotPremium" style="width:0%"></div>
+              <div class="bar-ticks">
+                <div class="bar-tick" style="left:25%"></div>
+                <div class="bar-tick" style="left:50%"></div>
+                <div class="bar-tick" style="left:75%"></div>
+              </div>
+              <svg class="bar-trend" id="trendCopilotPremium" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+              <div class="bar-body">
+                <span class="bar-label">Premium</span>
+                <span class="bar-value tnum muted" id="valCopilotPremium">--<em>%</em></span>
+                <span class="bar-detail" id="detailCopilotPremium"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sec" id="secZhipu">
+          <div class="sec-head">
+            <span class="sec-name">ZhipuAI <span class="plan-badge zhipu" id="zhipuaiPlan"></span></span>
+            <span class="sec-rule"></span>
+          </div>
+          <div class="grid-2">
+            <div class="bar zhipu" id="cardZhipuaiTokens">
+              <div class="bar-fill skeleton" id="fillZhipuaiTokens" style="width:0%"></div>
+              <div class="bar-ticks">
+                <div class="bar-tick" style="left:25%"></div>
+                <div class="bar-tick" style="left:50%"></div>
+                <div class="bar-tick" style="left:75%"></div>
+              </div>
+              <svg class="bar-trend" id="trendZhipuaiTokens" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+              <div class="bar-body">
+                <span class="bar-label">Monthly</span>
+                <span class="bar-value tnum muted" id="valZhipuaiTokens">--<em>%</em></span>
+                <span class="bar-detail" id="detailZhipuaiTokens"></span>
+              </div>
+            </div>
+
+            <div class="bar zhipu" id="cardZhipuaiMcp">
+              <div class="bar-fill skeleton" id="fillZhipuaiMcp" style="width:0%"></div>
+              <div class="bar-ticks">
+                <div class="bar-tick" style="left:25%"></div>
+                <div class="bar-tick" style="left:50%"></div>
+                <div class="bar-tick" style="left:75%"></div>
+              </div>
+              <svg class="bar-trend" id="trendZhipuaiMcp" viewBox="0 0 80 30" preserveAspectRatio="none"><path fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+              <div class="bar-body">
+                <span class="bar-label">MCP Calls</span>
+                <span class="bar-value tnum muted" id="valZhipuaiMcp">--<em>%</em></span>
+                <span class="bar-detail" id="detailZhipuaiMcp"></span>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
 
-    <!-- Claude Section -->
-    <section class="section section--claude">
-      <div class="section__header">
-        <span>Claude</span>
-        <span class="section__badge section__badge--claude" id="claudeWebPlan"></span>
-        <span class="section__badge section__badge--dim" id="claudeWebDisconnected" style="display:none;">CDP Disconnected</span>
-      </div>
-      <div class="section__grid" id="cardClaudeBrand">
-        <div class="card card--claude" id="cardClaudeSession">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillClaudeSession"></div>
-            <span class="bar__label">Session</span>
-            <span class="bar__detail" id="detailClaudeSession"></span>
-            <span class="bar__value bar__value--muted" id="valClaudeSession">--<span class="bar__unit">%</span></span>
+      <!-- Local LLM -->
+      <section class="sec" id="secLocal">
+        <div class="sec-head">
+          <span class="sec-name">Local · Ollama</span>
+          <span class="sec-rule"></span>
+        </div>
+        <div class="grid-1">
+          <div class="bar local" id="cardOllama">
+            <div class="bar-fill" id="fillOllama" style="width:0%"></div>
+            <div class="bar-ticks">
+              <div class="bar-tick" style="left:25%"></div>
+              <div class="bar-tick" style="left:50%"></div>
+              <div class="bar-tick" style="left:75%"></div>
+            </div>
+            <div class="bar-body">
+              <span class="bar-label">Ollama</span>
+              <span class="bar-value tnum muted" id="valOllama">--</span>
+              <span class="bar-detail" id="detailOllama"></span>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="card card--claude" id="cardClaudeWeekly">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillClaudeWeekly"></div>
-            <span class="bar__label">Weekly</span>
-            <span class="bar__detail" id="detailClaudeWeekly"></span>
-            <span class="bar__value bar__value--muted" id="valClaudeWeekly">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-
-        <div class="card card--claude" id="cardClaudeSonnet">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillClaudeSonnet"></div>
-            <span class="bar__label">Sonnet</span>
-            <span class="bar__detail" id="detailClaudeSonnet"></span>
-            <span class="bar__value bar__value--muted" id="valClaudeSonnet">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-
-        <div class="card card--claude" id="cardClaudeExtra">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillClaudeExtra"></div>
-            <span class="bar__label">Extra</span>
-            <span class="bar__detail" id="detailClaudeExtra"></span>
-            <span class="bar__value bar__value--muted" id="valClaudeExtra">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Codex + Copilot + ZhipuAI -->
-    <section class="section section--row3">
-      <div class="section__header-row section__header-row--codex-row">
-        <div class="section__header">
-          <span>Codex</span>
-          <span class="section__badge section__badge--codex" id="codexPlan"></span>
-        </div>
-        <div class="section__header">
-          <span>Copilot</span>
-          <span class="section__badge section__badge--copilot" id="copilotPlan"></span>
-        </div>
-        <div class="section__header">
-          <span>ZhipuAI</span>
-          <span class="section__badge section__badge--accent" id="zhipuaiPlan"></span>
-        </div>
-      </div>
-      <div class="section__grid">
-        <div class="card card--codex" id="cardCodexSession">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillCodexSession"></div>
-            <span class="bar__label">Session</span>
-            <span class="bar__detail" id="detailCodexSession"></span>
-            <span class="bar__value bar__value--muted" id="valCodexSession">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-        <div class="card card--codex" id="cardCodexWeekly">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillCodexWeekly"></div>
-            <span class="bar__label">Weekly</span>
-            <span class="bar__detail" id="detailCodexWeekly"></span>
-            <span class="bar__value bar__value--muted" id="valCodexWeekly">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-        <div class="card card--copilot" id="cardCopilotPremium">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillCopilotPremium"></div>
-            <span class="bar__label">Premium</span>
-            <span class="bar__detail" id="detailCopilotPremium"></span>
-            <span class="bar__value bar__value--muted" id="valCopilotPremium">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-        <div class="card card--zhipuai" id="cardZhipuaiTokens">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillZhipuaiTokens"></div>
-            <span class="bar__label">Monthly</span>
-            <span class="bar__detail" id="detailZhipuaiTokens"></span>
-            <span class="bar__value bar__value--muted" id="valZhipuaiTokens">--<span class="bar__unit">%</span></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Local LLM Section -->
-    <section class="section section--local">
-      <div class="section__header">
-        <span>Local LLM</span>
-      </div>
-      <div class="section__grid section__grid--1col">
-        <div class="card card--local" id="cardOllama">
-          <div class="bar">
-            <div class="bar__fill bar__fill--skeleton" id="fillOllama"></div>
-            <span class="bar__label">Ollama</span>
-            <span class="bar__detail" id="detailOllama"></span>
-            <span class="bar__value bar__value--muted" id="valOllama">--</span>
-          </div>
-        </div>
-      </div>
-    </section>
+    </div>
   </main>
+</div>
 
-  <!-- Settings Modal -->
-  <div class="modal" id="settingsModal">
-    <div class="modal__backdrop" id="modalBackdrop"></div>
-    <div class="modal__content">
-      <div class="modal__header">
-        <h2 class="modal__title">Settings</h2>
-        <button class="btn btn--icon modal__close" id="btnCloseSettings" aria-label="Close">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="modal__body" id="settingsBody">
-        <fieldset class="settings-group">
-          <legend class="settings-group__title">API Keys</legend>
-          <div class="form-field">
-            <label for="keyCodex">Codex (Bearer Token)</label>
-            <input type="password" id="keyCodex" placeholder="Bearer token from chatgpt.com" autocomplete="off">
+<!-- Settings Modal -->
+<div class="modal" id="settingsModal">
+  <div class="modal__backdrop" id="modalBackdrop"></div>
+  <div class="modal__content">
+    <div class="modal__header">
+      <h2 class="modal__title">Settings</h2>
+      <button class="icon-btn modal__close" id="btnCloseSettings" aria-label="Close">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal__body" id="settingsBody">
+      <fieldset class="settings-group">
+        <legend class="settings-group__title">API Keys</legend>
+        <div class="form-field">
+          <label for="keyCodex">Codex (Bearer Token)</label>
+          <input type="password" id="keyCodex" placeholder="Bearer token from chatgpt.com" autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label for="keyZhipuai">ZhipuAI</label>
+          <input type="password" id="keyZhipuai" placeholder="API key" autocomplete="off">
+        </div>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend class="settings-group__title">Thresholds</legend>
+        <div class="threshold-field" data-metric="cpu_percent">
+          <span class="threshold-field__label">CPU %</span>
+          <div class="threshold-field__inputs">
+            <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+            <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
           </div>
-          <div class="form-field">
-            <label for="keyZhipuai">ZhipuAI</label>
-            <input type="password" id="keyZhipuai" placeholder="API key" autocomplete="off">
+        </div>
+        <div class="threshold-field" data-metric="memory_percent">
+          <span class="threshold-field__label">Memory %</span>
+          <div class="threshold-field__inputs">
+            <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+            <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
           </div>
-        </fieldset>
-        <fieldset class="settings-group">
-          <legend class="settings-group__title">Thresholds</legend>
-          <div class="threshold-field" data-metric="cpu_percent">
-            <span class="threshold-field__label">CPU %</span>
-            <div class="threshold-field__inputs">
-              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
-              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
-            </div>
+        </div>
+        <div class="threshold-field" data-metric="disk_percent">
+          <span class="threshold-field__label">Disk %</span>
+          <div class="threshold-field__inputs">
+            <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="85"></label>
+            <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
           </div>
-          <div class="threshold-field" data-metric="memory_percent">
-            <span class="threshold-field__label">Memory %</span>
-            <div class="threshold-field__inputs">
-              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
-              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
-            </div>
+        </div>
+        <div class="threshold-field" data-metric="token_cost">
+          <span class="threshold-field__label">Token Cost ($)</span>
+          <div class="threshold-field__inputs">
+            <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" step="0.5" value="10"></label>
+            <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" step="0.5" value="50"></label>
           </div>
-          <div class="threshold-field" data-metric="disk_percent">
-            <span class="threshold-field__label">Disk %</span>
-            <div class="threshold-field__inputs">
-              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="85"></label>
-              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="95"></label>
-            </div>
+        </div>
+        <div class="threshold-field" data-metric="llm_usage_percent">
+          <span class="threshold-field__label">LLM Usage %</span>
+          <div class="threshold-field__inputs">
+            <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
+            <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="90"></label>
           </div>
-          <div class="threshold-field" data-metric="token_cost">
-            <span class="threshold-field__label">Token Cost ($)</span>
-            <div class="threshold-field__inputs">
-              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" step="0.5" value="10"></label>
-              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" step="0.5" value="50"></label>
-            </div>
-          </div>
-          <div class="threshold-field" data-metric="llm_usage_percent">
-            <span class="threshold-field__label">LLM Usage %</span>
-            <div class="threshold-field__inputs">
-              <label>Warning <input type="number" class="threshold-input" data-level="warning" min="0" max="100" value="80"></label>
-              <label>Critical <input type="number" class="threshold-input" data-level="critical" min="0" max="100" value="90"></label>
-            </div>
-          </div>
-        </fieldset>
-        <fieldset class="settings-group">
-          <legend class="settings-group__title">Local LLM</legend>
-          <div class="form-field">
-            <label for="ollamaBaseUrl">Ollama URL</label>
-            <input type="url" id="ollamaBaseUrl" placeholder="http://127.0.0.1:11434" autocomplete="off">
-          </div>
-        </fieldset>
-        <fieldset class="settings-group">
-          <legend class="settings-group__title">OpenClaw Gateway</legend>
-          <div class="form-field">
-            <label for="gatewayUrl">Gateway URL</label>
-            <input type="url" id="gatewayUrl" placeholder="https://..." autocomplete="off">
-          </div>
-          <div class="form-field">
-            <label for="gatewayKey">API Key</label>
-            <input type="password" id="gatewayKey" placeholder="API key" autocomplete="off">
-          </div>
-        </fieldset>
-        <fieldset class="settings-group">
-          <legend class="settings-group__title">External Display</legend>
-          <div class="form-field">
-            <label for="geekmagicUltraUrl">GeekMagic Ultra URL</label>
-            <input type="url" id="geekmagicUltraUrl" placeholder="http://192.168.150.113" autocomplete="off">
-          </div>
-        </fieldset>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--secondary" id="btnCancelSettings">Cancel</button>
-        <button class="btn btn--primary" id="btnSaveSettings">Save</button>
-      </div>
+        </div>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend class="settings-group__title">Local LLM</legend>
+        <div class="form-field">
+          <label for="ollamaBaseUrl">Ollama URL</label>
+          <input type="url" id="ollamaBaseUrl" placeholder="http://127.0.0.1:11434" autocomplete="off">
+        </div>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend class="settings-group__title">OpenClaw Gateway</legend>
+        <div class="form-field">
+          <label for="gatewayUrl">Gateway URL</label>
+          <input type="url" id="gatewayUrl" placeholder="https://..." autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label for="gatewayKey">API Key</label>
+          <input type="password" id="gatewayKey" placeholder="API key" autocomplete="off">
+        </div>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend class="settings-group__title">External Display</legend>
+        <div class="form-field">
+          <label for="geekmagicUltraUrl">GeekMagic Ultra URL</label>
+          <input type="url" id="geekmagicUltraUrl" placeholder="http://192.168.150.113" autocomplete="off">
+        </div>
+      </fieldset>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--secondary" id="btnCancelSettings">Cancel</button>
+      <button class="btn btn--primary" id="btnSaveSettings">Save</button>
     </div>
   </div>
+</div>
 
-  <script src="/static/js/charts.js"></script>
-  <script src="/static/js/websocket.js"></script>
-  <script src="/static/js/settings.js"></script>
-  <script src="/static/js/app.js"></script>
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/websocket.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/app.js"></script>
 </body>
 </html>
