@@ -30,13 +30,13 @@ const Settings = (() => {
 
   async function open() {
     isOpen = true;
-    modal.classList.add('modal--open');
+    modal.classList.add('open');
     await loadConfig();
   }
 
   function close() {
     isOpen = false;
-    modal.classList.remove('modal--open');
+    modal.classList.remove('open');
   }
 
   async function loadConfig() {
