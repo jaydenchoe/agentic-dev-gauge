@@ -266,6 +266,7 @@ const App = (() => {
       { fill: 'fillClaudeSession', val: 'valClaudeSession', card: 'cardClaudeSession', detail: 'detailClaudeSession', pct: data.session?.used_percent, reset: data.session?.reset_text },
       { fill: 'fillClaudeWeekly', val: 'valClaudeWeekly', card: 'cardClaudeWeekly', detail: 'detailClaudeWeekly', pct: data.weekly_all?.used_percent, reset: data.weekly_all?.reset_text },
       { fill: 'fillClaudeSonnet', val: 'valClaudeSonnet', card: 'cardClaudeSonnet', detail: 'detailClaudeSonnet', pct: data.weekly_sonnet?.used_percent, reset: data.weekly_sonnet?.reset_text },
+      { fill: 'fillClaudeDesign', val: 'valClaudeDesign', card: 'cardClaudeDesign', detail: 'detailClaudeDesign', pct: data.weekly_design?.used_percent, reset: data.weekly_design?.reset_text },
     ];
 
     for (const item of items) {
