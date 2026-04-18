@@ -14,47 +14,32 @@ const Charts = (() => {
     const el = document.getElementById(barId);
     if (!el) return;
 
-    const fill = el.querySelector('.bar__fill');
-    const valueEl = el.querySelector('.bar__value');
+    const fill = el.querySelector('.bar-fill');
+    const valueEl = el.querySelector('.bar-value');
 
     const clamped = Math.max(0, Math.min(100, percent));
 
     if (fill) {
       fill.style.width = clamped + '%';
-      fill.className = 'bar__fill';
-      if (level === 'warning') fill.classList.add('bar__fill--warning');
-      if (level === 'critical') fill.classList.add('bar__fill--critical');
+      fill.classList.remove('skeleton');
     }
 
     if (valueEl) {
-      valueEl.innerHTML = `${Math.round(clamped)}<span class="bar__unit">%</span>`;
-      valueEl.className = 'bar__value';
-      if (level === 'warning') valueEl.classList.add('bar__value--warning');
-      if (level === 'critical') valueEl.classList.add('bar__value--critical');
+      valueEl.innerHTML = `${Math.round(clamped)}<em>%</em>`;
+      valueEl.className = 'bar-value tnum';
     }
+
+    el.classList.remove('warn', 'crit');
+    if (level === 'warning') el.classList.add('warn');
+    if (level === 'critical') el.classList.add('crit');
   }
 
-  /**
-   * Update card threshold state (border color, alert icon).
-   * @param {string} cardId - Card element ID
-   * @param {string} level - 'normal' | 'warning' | 'critical'
-   */
   function updateCardState(cardId, level) {
     const card = document.getElementById(cardId);
     if (!card) return;
-
-    card.classList.remove('card--warning', 'card--critical');
-    const icon = card.querySelector('.card__alert-icon');
-
-    if (level === 'warning') {
-      card.classList.add('card--warning');
-      if (icon) { icon.textContent = '\u26A0'; icon.setAttribute('aria-label', 'Warning'); }
-    } else if (level === 'critical') {
-      card.classList.add('card--critical');
-      if (icon) { icon.textContent = '\uD83D\uDD34'; icon.setAttribute('aria-label', 'Critical'); }
-    } else {
-      if (icon) { icon.textContent = ''; icon.removeAttribute('aria-label'); }
-    }
+    card.classList.remove('warn', 'crit');
+    if (level === 'warning') card.classList.add('warn');
+    if (level === 'critical') card.classList.add('crit');
   }
 
   // --- Sparkline ---
