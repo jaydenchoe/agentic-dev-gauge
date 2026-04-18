@@ -31,6 +31,8 @@ class ClaudeWebUsage:
     weekly_all_reset_text: Optional[str] = None
     weekly_sonnet_used_percent: Optional[float] = None
     weekly_sonnet_reset_text: Optional[str] = None
+    weekly_design_used_percent: Optional[float] = None
+    weekly_design_reset_text: Optional[str] = None
     extra_usage_usd: Optional[float] = None
     extra_usage_limit_usd: Optional[float] = None
     extra_usage_percent: Optional[float] = None
@@ -50,6 +52,10 @@ class ClaudeWebUsage:
             "weekly_sonnet": {
                 "used_percent": self.weekly_sonnet_used_percent,
                 "reset_text": self.weekly_sonnet_reset_text,
+            },
+            "weekly_design": {
+                "used_percent": self.weekly_design_used_percent,
+                "reset_text": self.weekly_design_reset_text,
             },
             "extra_usage": {
                 "used_usd": self.extra_usage_usd,
@@ -239,6 +245,15 @@ def _parse_usage_text(text: str) -> Optional[ClaudeWebUsage]:
             pct = _find_nearby(lines, i, "사용됨")
             if pct:
                 usage.weekly_sonnet_used_percent = _extract_percent(pct)
+
+        # Weekly design quota
+        if "Design" in line or "디자인" in line:
+            reset = _find_nearby(lines, i, "재설정")
+            if reset:
+                usage.weekly_design_reset_text = reset
+            pct = _find_nearby(lines, i, "사용됨")
+            if pct:
+                usage.weekly_design_used_percent = _extract_percent(pct)
 
         # Extra usage
         if "추가 사용량" in line and i + 1 < len(lines):
