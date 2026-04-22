@@ -184,6 +184,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             interval_sec=settings.geekmagic_interval_sec,
         )
         display_svc.start()
+        usage_svc.register_update_callback(display_svc.on_data_updated)
         logger.info(
             "GeekMagic display push enabled (url=%s, interval=%ss)",
             settings.geekmagic_ultra_url,

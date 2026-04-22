@@ -10,12 +10,12 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from src.adapters.display.renderer import (
-    gif_bytes,
-    render_claude,
-    render_clock,
-    render_local_llm,
-    render_other,
-    render_system,
+    animated_gif_bytes,
+    render_claude_animated,
+    render_clock_animated,
+    render_local_llm_animated,
+    render_other_animated,
+    render_system_animated,
 )
 from src.core.ports.display import DisplayPort
 
@@ -73,12 +73,12 @@ class DisplayService:
     async def _tick(self) -> None:
         page = self._page_index % _PAGE_COUNT
         self._page_index += 1
-        img = self._render_page(page)
-        ok = await self._adapter.push_png(gif_bytes(img))
+        frames = self._render_page_animated(page)
+        ok = await self._adapter.push_png(animated_gif_bytes(frames))
         if not ok:
             logger.debug("Display push returned False (page %s)", page)
 
-    def _render_page(self, page: int):
+    def _render_page_animated(self, page: int):
         if page == 0:
             return self._render_clock()
         if page == 1:
@@ -95,13 +95,13 @@ class DisplayService:
         session = c.session_used_percent if c else None
         weekly = c.weekly_all_used_percent if c else None
         disk = snap.disk.usage_percent if snap else None
-        return render_clock(session_pct=session, weekly_pct=weekly, disk_pct=disk)
+        return render_clock_animated(session_pct=session, weekly_pct=weekly, disk_pct=disk)
 
     def _render_system(self):
         snap = self._monitor.latest
         if snap is None:
-            return render_system(None, None, None)
-        return render_system(
+            return render_system_animated(None, None, None)
+        return render_system_animated(
             cpu=snap.cpu.usage_percent,
             mem=snap.memory.usage_percent,
             disk=snap.disk.usage_percent,
@@ -110,8 +110,8 @@ class DisplayService:
     def _render_claude(self):
         c = self._usage.claude_web_latest
         if c is None:
-            return render_claude(None, None, None)
-        return render_claude(
+            return render_claude_animated(None, None, None)
+        return render_claude_animated(
             session=c.session_used_percent,
             weekly=c.weekly_all_used_percent,
             sonnet=c.weekly_sonnet_used_percent,
@@ -121,13 +121,13 @@ class DisplayService:
         codex_pct = self._pct_from_usages("codex")
         zhipu_pct = self._pct_from_usages("zhipuai")
         copilot_pct = self._copilot_pct()
-        return render_other(codex=codex_pct, copilot=copilot_pct, zhipu=zhipu_pct)
+        return render_other_animated(codex=codex_pct, copilot=copilot_pct, zhipu=zhipu_pct)
 
     def _render_local_llm(self):
         o = self._usage.ollama_latest
         if o is None or not o.available:
-            return render_local_llm(None, None, None)
-        return render_local_llm(
+            return render_local_llm_animated(None, None, None)
+        return render_local_llm_animated(
             model=o.model,
             vram_pct=o.vram_percent,
             tok_per_sec=o.tok_per_sec,
@@ -150,3 +150,18 @@ class DisplayService:
             if q.quota_id == "premium_interactions" and not q.unlimited:
                 return q.percent_used
         return None
+
+    def on_data_updated(self, source: str) -> None:
+        """Called by UsageService when data arrives. Immediately push the relevant page."""
+        page_map = {"claude": 2, "copilot": 3, "adapters": 3, "ollama": 4}
+        page = page_map.get(source)
+        if page is None or self._task is None or self._task.done():
+            return
+        asyncio.create_task(self._push_page(page))
+
+    async def _push_page(self, page: int) -> None:
+        try:
+            frames = self._render_page_animated(page)
+            await self._adapter.push_png(animated_gif_bytes(frames))
+        except Exception:
+            logger.debug("Immediate push failed for page %s", page)
