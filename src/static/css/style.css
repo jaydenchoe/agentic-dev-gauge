@@ -222,4 +222,74 @@ body { font-family: var(--sans); background: var(--ink-0); color: var(--fg-0); o
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.98 0.004 260 / 0.08); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.98 0.004 260 / 0.14); }
+
+/* ── Mic visualizer ── */
+.mic-strip {
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, oklch(0.98 0.004 260 / 0.015), transparent),
+    var(--ink-1);
+  overflow: hidden;
+  position: relative;
+  height: 96px;
+  display: flex;
+  align-items: stretch;
+}
+.mic-head {
+  position: absolute;
+  top: 8px; left: 12px;
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  z-index: 2;
+  pointer-events: none;
+}
+.mic-head .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--fg-4);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.mic-strip.live .mic-head .dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
+}
+.mic-meta {
+  position: absolute;
+  top: 8px; right: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--fg-4);
+  z-index: 2;
+  pointer-events: none;
+  display: flex; gap: 12px;
+}
+.mic-meta b { color: var(--fg-1); font-weight: 500; font-variant-numeric: tabular-nums; }
+.mic-canvas { width: 100%; height: 100%; display: block; }
+.mic-enable {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  background: oklch(0.14 0.004 260 / 0.6);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+  z-index: 3;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+  border: none;
+  width: 100%;
+  transition: background 0.2s, color 0.2s;
+}
+.mic-enable:hover { color: var(--fg-0); background: oklch(0.14 0.004 260 / 0.5); }
+.mic-enable svg { opacity: 0.8; }
+.mic-strip.live .mic-enable { display: none; }
+.mic-strip.error .mic-enable { color: var(--crit); }
 .hidden { display: none !important; }

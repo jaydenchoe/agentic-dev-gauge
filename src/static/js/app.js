@@ -527,3 +527,163 @@ const App = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', App.init);
+
+// Mic visualizer
+(function(){
+  const strip  = document.getElementById('micStrip');
+  const canvas = document.getElementById('micCanvas');
+  const enable = document.getElementById('micEnable');
+  const label  = document.getElementById('micLabel');
+  const peakEl = document.getElementById('micPeak');
+  const rmsEl  = document.getElementById('micRms');
+  if (!strip || !canvas || !enable) return;
+  const ctx2d = canvas.getContext('2d');
+
+  let audioCtx, analyserL, analyserR, srcNode, stream;
+  let freqL, freqR, peakHoldL = [], peakHoldR = [];
+  let peakDecay = 0;
+  let running = false;
+
+  function resize() {
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const w = strip.clientWidth, h = strip.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  async function start() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 },
+        video: false,
+      });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      srcNode = audioCtx.createMediaStreamSource(stream);
+      const splitter = audioCtx.createChannelSplitter(2);
+      srcNode.connect(splitter);
+      analyserL = audioCtx.createAnalyser();
+      analyserR = audioCtx.createAnalyser();
+      analyserL.fftSize = 256; analyserR.fftSize = 256;
+      analyserL.smoothingTimeConstant = 0.75;
+      analyserR.smoothingTimeConstant = 0.75;
+      splitter.connect(analyserL, 0);
+      splitter.connect(analyserR, 1);
+      freqL = new Uint8Array(analyserL.frequencyBinCount);
+      freqR = new Uint8Array(analyserR.frequencyBinCount);
+      const nBars = 32;
+      peakHoldL = new Array(nBars).fill(0);
+      peakHoldR = new Array(nBars).fill(0);
+      strip.classList.remove('error');
+      strip.classList.add('live');
+      label.textContent = `mic · ${stream.getAudioTracks()[0]?.label?.slice(0, 40) || 'default'} · stereo`;
+      running = true;
+      draw();
+    } catch (_err) {
+      strip.classList.add('error');
+      label.textContent = 'mic · denied';
+      enable.querySelector('svg').style.display = 'none';
+      enable.childNodes[enable.childNodes.length - 1].textContent = ' Permission denied — click to retry';
+    }
+  }
+  enable.addEventListener('click', start);
+
+  function hueForBar(i, total) {
+    const t = i / (total - 1);
+    const shaped = Math.pow(t, 0.9);
+    return 270 - shaped * 255;
+  }
+
+  function draw() {
+    if (!running) return;
+    requestAnimationFrame(draw);
+    analyserL.getByteFrequencyData(freqL);
+    analyserR.getByteFrequencyData(freqR);
+
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx2d.fillStyle = 'oklch(0.17 0.005 260 / 0.28)';
+    ctx2d.fillRect(0, 0, w, h);
+
+    const nBars = 32;
+    const usable = Math.floor(freqL.length * 0.65);
+    const binsPerBar = Math.floor(usable / nBars);
+    const gap = 2;
+    const barW = (w - gap * (nBars - 1)) / nBars;
+    const midY = h / 2;
+    const maxHalf = h / 2 - 4;
+
+    let peakMax = 0, rmsAccum = 0;
+
+    for (let i = 0; i < nBars; i++) {
+      let sumL = 0, sumR = 0;
+      for (let j = 0; j < binsPerBar; j++) {
+        sumL += freqL[i * binsPerBar + j];
+        sumR += freqR[i * binsPerBar + j];
+      }
+      const avgL = (sumL / binsPerBar) / 255;
+      const avgR = (sumR / binsPerBar) / 255;
+      const shapedL = Math.pow(avgL, 0.85);
+      const shapedR = Math.pow(avgR, 0.85);
+      const hL = shapedL * maxHalf;
+      const hR = shapedR * maxHalf;
+      const x = i * (barW + gap);
+      const hue = hueForBar(i, nBars);
+      const col = `oklch(0.72 0.17 ${hue.toFixed(1)})`;
+      const colDim = `oklch(0.58 0.14 ${hue.toFixed(1)})`;
+
+      const gradUp = ctx2d.createLinearGradient(0, midY - hL, 0, midY);
+      gradUp.addColorStop(0, col);
+      gradUp.addColorStop(1, colDim);
+      ctx2d.fillStyle = gradUp;
+      roundRectFill(ctx2d, x, midY - hL, barW, hL, Math.min(2, barW / 3), 'top');
+
+      const gradDn = ctx2d.createLinearGradient(0, midY, 0, midY + hR);
+      gradDn.addColorStop(0, colDim);
+      gradDn.addColorStop(1, col);
+      ctx2d.fillStyle = gradDn;
+      roundRectFill(ctx2d, x, midY, barW, hR, Math.min(2, barW / 3), 'bot');
+
+      peakHoldL[i] = Math.max(peakHoldL[i] - 0.6, hL);
+      peakHoldR[i] = Math.max(peakHoldR[i] - 0.6, hR);
+      ctx2d.fillStyle = `oklch(0.96 0.05 ${hue.toFixed(1)})`;
+      ctx2d.fillRect(x, midY - peakHoldL[i] - 1, barW, 1);
+      ctx2d.fillRect(x, midY + peakHoldR[i], barW, 1);
+
+      const peak = Math.max(avgL, avgR);
+      if (peak > peakMax) peakMax = peak;
+      rmsAccum += (avgL * avgL + avgR * avgR) / 2;
+    }
+
+    ctx2d.fillStyle = 'oklch(0.98 0.004 260 / 0.12)';
+    ctx2d.fillRect(0, midY - 0.5, w, 1);
+
+    const rms = Math.sqrt(rmsAccum / nBars);
+    peakDecay = Math.max(peakDecay - 0.015, peakMax);
+    peakEl.textContent = (peakDecay * 100).toFixed(0).padStart(2, '0');
+    rmsEl.textContent  = (rms * 100).toFixed(0).padStart(2, '0');
+  }
+
+  function roundRectFill(c, x, y, w, h, r, which) {
+    if (h < 1) return;
+    c.beginPath();
+    if (which === 'top') {
+      c.moveTo(x, y + h);
+      c.lineTo(x, y + r);
+      c.quadraticCurveTo(x, y, x + r, y);
+      c.lineTo(x + w - r, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h);
+    } else {
+      c.moveTo(x, y);
+      c.lineTo(x + w, y);
+      c.lineTo(x + w, y + h - r);
+      c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + r, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - r);
+    }
+    c.closePath();
+    c.fill();
+  }
+})();
