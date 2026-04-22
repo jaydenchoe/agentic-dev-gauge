@@ -53,7 +53,9 @@ class ConnectionManager:
             if channel not in channels:
                 continue
             try:
-                await ws.send_text(message)
+                await asyncio.wait_for(ws.send_text(message), timeout=5.0)
+            except asyncio.TimeoutError:
+                dead.append(ws)
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -100,12 +102,18 @@ async def run_broadcast_loop(app: Any) -> None:
         # System metrics
         snapshot = monitor_svc.latest
         if snapshot and manager.active_count > 0:
-            await manager.broadcast("system_metrics", snapshot)
+            try:
+                await manager.broadcast("system_metrics", snapshot)
+            except Exception:
+                pass
 
             # Check thresholds and broadcast alerts
             alerts = await alert_svc.check_system(snapshot)
             for alert in alerts:
-                await manager.broadcast("alert", alert)
+                try:
+                    await manager.broadcast("alert", alert)
+                except Exception:
+                    pass
 
         # Usage (less frequent)
         usage_counter += metrics_interval
@@ -120,12 +128,18 @@ async def run_broadcast_loop(app: Any) -> None:
                 usage_data["claude_web"] = claude_web.to_dict() if claude_web else None
                 usage_data["copilot_api"] = copilot_api.to_dict() if copilot_api else None
                 usage_data["ollama"] = ollama.to_dict() if ollama else None
-                await manager.broadcast("usage_update", usage_data)
+                try:
+                    await manager.broadcast("usage_update", usage_data)
+                except Exception:
+                    pass
 
                 if usage_snapshot:
                     cost_alerts = await alert_svc.check_usage(usage_snapshot)
                     for alert in cost_alerts:
-                        await manager.broadcast("alert", alert)
+                        try:
+                            await manager.broadcast("alert", alert)
+                        except Exception:
+                            pass
 
 
         await asyncio.sleep(metrics_interval)
