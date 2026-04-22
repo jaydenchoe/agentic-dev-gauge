@@ -191,6 +191,25 @@ class CodexUsageAdapter(UsagePort):
                         "user-agent": self.USER_AGENT,
                     },
                 )
+                if resp.status_code == 401:
+                    logger.warning("Codex 401 — attempting cookie renewal")
+                    new_token = await self._renew_token_via_cookie()
+                    if new_token:
+                        self._renewed_token = new_token
+                        resp = await client.get(
+                            self.BASE_URL,
+                            headers={
+                                "authorization": f"Bearer {new_token}",
+                                "oai-device-id": self.DEVICE_ID,
+                                "user-agent": self.USER_AGENT,
+                            },
+                        )
+                    else:
+                        return [TokenUsage(
+                            provider="codex", model="error",
+                            input_tokens=0, output_tokens=0, total_tokens=0,
+                            error="Token expired",
+                        )]
                 resp.raise_for_status()
                 data = resp.json()
         except httpx.HTTPError as exc:
