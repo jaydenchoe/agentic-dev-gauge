@@ -79,9 +79,11 @@ def launch_dashboard_app(url: str = "http://localhost:8080") -> Optional[subproc
         logger.warning("Chrome binary not found, cannot launch dashboard app")
         return None
 
+    default_profile = Path("~/Library/Application Support/Google/Chrome").expanduser()
+
     try:
         proc = subprocess.Popen(
-            [chrome_bin, f"--app={url}"],
+            [chrome_bin, f"--app={url}", f"--user-data-dir={default_profile}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

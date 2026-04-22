@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 from urllib.parse import urlparse
 
 from src.adapters.ai_usage.claude_web_usage import ClaudeWebUsage, fetch_claude_web_usage
@@ -77,6 +77,7 @@ class UsageService:
         self._ollama_last_benchmark_ts: float = 0
         self._ollama_base_url = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip() or _DEFAULT_OLLAMA_BASE_URL
         self._ollama_host, self._ollama_port = _parse_ollama_endpoint(self._ollama_base_url)
+        self._on_data_update: Optional[Callable[[str], None]] = None
 
     @property
     def latest(self) -> Optional[UsageSnapshot]:
@@ -96,6 +97,16 @@ class UsageService:
 
     def update_api_keys(self, api_keys: dict[str, str]) -> None:
         self._api_keys = api_keys
+
+    def register_update_callback(self, cb: Callable[[str], None]) -> None:
+        self._on_data_update = cb
+
+    def _notify(self, source: str) -> None:
+        if self._on_data_update is not None:
+            try:
+                self._on_data_update(source)
+            except Exception:
+                pass
 
     def update_ollama_base_url(self, ollama_base_url: str) -> None:
         self._ollama_base_url = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip() or _DEFAULT_OLLAMA_BASE_URL
@@ -123,6 +134,7 @@ class UsageService:
             total_cost_usd=total_cost if total_cost > 0 else None,
         )
         self._latest = snapshot
+        self._notify("adapters")
         return snapshot
 
     async def _loop(self) -> None:
@@ -138,13 +150,18 @@ class UsageService:
         while True:
             try:
                 result = await fetch_claude_web_usage(cdp_port=self._cdp_port)
-                if result:
+                valid = result is not None and (
+                    result.session_used_percent is not None
+                    or result.weekly_all_used_percent is not None
+                )
+                if valid:
                     self._claude_web_latest = result
-                    retry_interval = self._claude_web_interval  # Switch to normal interval
+                    self._notify("claude")
+                    retry_interval = self._claude_web_interval
                     logger.info("Claude web usage: session=%s%%, weekly=%s%%",
                                 result.session_used_percent, result.weekly_all_used_percent)
                 else:
-                    logger.warning("Claude web usage returned None, retrying in %ds", retry_interval)
+                    logger.warning("Claude web usage returned no data, retrying in %ds", retry_interval)
             except Exception:
                 logger.exception("Claude web usage collection error")
             await asyncio.sleep(retry_interval)
@@ -155,6 +172,7 @@ class UsageService:
                 result = await fetch_copilot_api_usage(github_token=self._github_token)
                 if result:
                     self._copilot_api_latest = result
+                    self._notify("copilot")
                     premium = next((q for q in result.quotas if q.quota_id == "premium_interactions"), None)
                     if premium:
                         logger.info("Copilot API usage: premium=%s%% used (%s/%s)",
@@ -174,6 +192,7 @@ class UsageService:
                         result.tok_per_sec = self._ollama_latest.tok_per_sec
                         result.benchmark_ago = _time_ago(self._ollama_last_benchmark_ts) if self._ollama_last_benchmark_ts else None
                     self._ollama_latest = result
+                    self._notify("ollama")
                     if result.model:
                         logger.info("Ollama: %s (%.1f GB VRAM)", result.model, result.vram_gb or 0)
             except Exception:

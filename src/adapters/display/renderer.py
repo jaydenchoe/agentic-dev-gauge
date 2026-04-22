@@ -258,6 +258,7 @@ def _render_columns_page(
     page_idx_1based: int,
     columns: list[tuple[str, str, str, Optional[float], bool]],
     # (label, value_text, value_color, pct_or_None, value_is_text)
+    anim_pct: float = 1.0,  # 0.0→1.0 fill progress for animation frames
 ) -> Image.Image:
     img, draw, fonts = _new_canvas()
     _draw_top_bar(draw, fonts, title, page_idx_1based)
@@ -272,8 +273,9 @@ def _render_columns_page(
 
     for i, (label, value_text, value_color, pct, is_text) in enumerate(columns):
         x = int(area_left + i * (col_w + COL_GAP))
+        scaled_pct = (pct * anim_pct) if (pct is not None and anim_pct < 1.0) else pct
         _draw_column(draw, fonts, x, top, int(col_w), area_h,
-                     label, value_text, value_color, pct, value_is_text=is_text)
+                     label, value_text, value_color, scaled_pct, value_is_text=is_text)
 
     _draw_progress_dots(draw, page_idx_1based - 1)
     return img
@@ -314,22 +316,20 @@ def render_clock(
     hh_w = _text_w(draw, hh, f_big)
     colon_w = _text_w(draw, ":", f_big)
     mm_w = _text_w(draw, mm, f_big)
-    ss_w = _text_w(draw, ss, f_sec)
-    spacer = 6  # gap between MM and SS
-    total_w = hh_w + colon_w + mm_w + spacer + ss_w
+    spacer = 4  # gap between MM and SS
     clock_y = TOP_BAR_H + 14
-    x = (SIZE - total_w) // 2
+    # Center only HH:MM; SS floats to the right independently
+    hhmm_w = hh_w + colon_w + mm_w
+    x = (SIZE - hhmm_w) // 2
 
     draw.text((x, clock_y), hh, font=f_big, fill=TEXT)
     x += hh_w
-    # colon — blink off on odd seconds for ambient feel
     colon_color = ACCENT if (now.second % 2 == 0) else "#0E3A2A"
     draw.text((x, clock_y), ":", font=f_big, fill=colon_color)
     x += colon_w
     draw.text((x, clock_y), mm, font=f_big, fill=TEXT)
-    x += mm_w + spacer
-    # seconds sit on the baseline of HH:MM — offset down
-    draw.text((x, clock_y + 40), ss, font=f_sec, fill=TEXT_MUTED)
+    # seconds sit below and to the right of MM
+    draw.text((x + mm_w + spacer, clock_y + 40), ss, font=f_sec, fill=TEXT_MUTED)
 
     # BUDGET strip — 3 mini rows
     strip_y = clock_y + 80
@@ -372,6 +372,15 @@ def _draw_budget_row(draw, fonts, y: int, label: str, pct: Optional[float]) -> N
     _draw_text_right(draw, pct_text, right, y, fonts["budget_pct"], col)
 
 
+_ANIM_FRAMES = 12
+_ANIM_FRAME_MS = 80
+
+
+def _ease_out(t: float) -> float:
+    """Quadratic ease-out: fast start, slow finish."""
+    return 1.0 - (1.0 - t) ** 2
+
+
 def render_system(cpu: Optional[float], mem: Optional[float], disk: Optional[float]) -> Image.Image:
     cols = [
         ("CPU",  _pct_text(cpu),  pct_color(cpu),  cpu,  False),
@@ -379,6 +388,16 @@ def render_system(cpu: Optional[float], mem: Optional[float], disk: Optional[flo
         ("DISK", _pct_text(disk), pct_color(disk), disk, False),
     ]
     return _render_columns_page("SYSTEM", 2, cols)
+
+
+def render_system_animated(cpu: Optional[float], mem: Optional[float], disk: Optional[float]) -> list[Image.Image]:
+    cols = [
+        ("CPU",  _pct_text(cpu),  pct_color(cpu),  cpu,  False),
+        ("MEM",  _pct_text(mem),  pct_color(mem),  mem,  False),
+        ("DISK", _pct_text(disk), pct_color(disk), disk, False),
+    ]
+    return [_render_columns_page("SYSTEM", 2, cols, _ease_out((i + 1) / _ANIM_FRAMES))
+            for i in range(_ANIM_FRAMES)]
 
 
 def render_claude(session: Optional[float], weekly: Optional[float], sonnet: Optional[float]) -> Image.Image:
@@ -390,6 +409,16 @@ def render_claude(session: Optional[float], weekly: Optional[float], sonnet: Opt
     return _render_columns_page("CLAUDE", 3, cols)
 
 
+def render_claude_animated(session: Optional[float], weekly: Optional[float], sonnet: Optional[float]) -> list[Image.Image]:
+    cols = [
+        ("SESSION", _pct_text(session), pct_color(session), session, False),
+        ("WEEKLY",  _pct_text(weekly),  pct_color(weekly),  weekly,  False),
+        ("SONNET",  _pct_text(sonnet),  pct_color(sonnet),  sonnet,  False),
+    ]
+    return [_render_columns_page("CLAUDE", 3, cols, _ease_out((i + 1) / _ANIM_FRAMES))
+            for i in range(_ANIM_FRAMES)]
+
+
 def render_other(codex: Optional[float], copilot: Optional[float], zhipu: Optional[float]) -> Image.Image:
     cols = [
         ("CODEX",   _pct_text(codex),   pct_color(codex),   codex,   False),
@@ -397,6 +426,16 @@ def render_other(codex: Optional[float], copilot: Optional[float], zhipu: Option
         ("ZHIPU",   _pct_text(zhipu),   pct_color(zhipu),   zhipu,   False),
     ]
     return _render_columns_page("OTHER", 4, cols)
+
+
+def render_other_animated(codex: Optional[float], copilot: Optional[float], zhipu: Optional[float]) -> list[Image.Image]:
+    cols = [
+        ("CODEX",   _pct_text(codex),   pct_color(codex),   codex,   False),
+        ("COPILOT", _pct_text(copilot), pct_color(copilot), copilot, False),
+        ("ZHIPU",   _pct_text(zhipu),   pct_color(zhipu),   zhipu,   False),
+    ]
+    return [_render_columns_page("OTHER", 4, cols, _ease_out((i + 1) / _ANIM_FRAMES))
+            for i in range(_ANIM_FRAMES)]
 
 
 def render_local_llm(
@@ -416,7 +455,34 @@ def render_local_llm(
     return _render_columns_page("LOCAL LLM", 5, cols)
 
 
-# ─── bytes helpers (unchanged API) ───────────────────────────
+def render_local_llm_animated(
+    model: Optional[str],
+    vram_pct: Optional[float],
+    tok_per_sec: Optional[float],
+) -> list[Image.Image]:
+    model_text = (model or "—")
+    if len(model_text) > 10:
+        model_text = model_text[:9] + "…"
+    tps_text = f"{tok_per_sec:.1f}" if tok_per_sec is not None else "—"
+    cols = [
+        ("MODEL", model_text,            TEXT,                 None,     True),
+        ("VRAM",  _pct_text(vram_pct),   pct_color(vram_pct),  vram_pct, False),
+        ("TOK/S", tps_text,              tps_color(tok_per_sec), None,   True),
+    ]
+    return [_render_columns_page("LOCAL LLM", 5, cols, _ease_out((i + 1) / _ANIM_FRAMES))
+            for i in range(_ANIM_FRAMES)]
+
+
+def render_clock_animated(
+    session_pct: Optional[float] = None,
+    weekly_pct: Optional[float] = None,
+    disk_pct: Optional[float] = None,
+) -> list[Image.Image]:
+    """Clock page: colons blink across 12 frames (6 on / 6 off)."""
+    return [render_clock(session_pct, weekly_pct, disk_pct) for _ in range(_ANIM_FRAMES)]
+
+
+# ─── bytes helpers ───────────────────────────────────────────
 def png_bytes(img: Image.Image) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -426,4 +492,19 @@ def png_bytes(img: Image.Image) -> bytes:
 def gif_bytes(img: Image.Image) -> bytes:
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format="GIF")
+    return buf.getvalue()
+
+
+def animated_gif_bytes(frames: list[Image.Image], frame_ms: int = _ANIM_FRAME_MS) -> bytes:
+    buf = io.BytesIO()
+    converted = [f.convert("P", palette=Image.ADAPTIVE, dither=0) for f in frames]
+    converted[0].save(
+        buf,
+        format="GIF",
+        save_all=True,
+        append_images=converted[1:],
+        duration=frame_ms,
+        loop=0,
+        optimize=False,
+    )
     return buf.getvalue()

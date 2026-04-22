@@ -93,12 +93,27 @@ async def fetch_claude_web_usage(
         )
         page = usage_page or any_page
         if not page:
-            logger.warning("No page target found on CDP %s:%s", cdp_host, cdp_port)
-            return None
+            # No tabs open — create one pointing to the usage page
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as c:
+                    resp = await c.put(
+                        f"http://{cdp_host}:{cdp_port}/json/new",
+                        params={"url": "https://claude.ai/settings/usage"},
+                    )
+                    if resp.status_code == 200:
+                        page = resp.json()
+                        logger.info("Opened new CDP tab for claude.ai/settings/usage")
+                        await asyncio.sleep(8)  # extra wait for fresh tab to load
+            except Exception as exc:
+                logger.warning("Failed to open new CDP tab: %s", exc)
+            if not page:
+                logger.warning("No page target found on CDP %s:%s", cdp_host, cdp_port)
+                return None
 
         ws_url = page["webSocketDebuggerUrl"]
-        # Always do full navigation to ensure fresh data (SPA won't update on reload alone)
-        text = await _cdp_get_page_text(ws_url, skip_navigate=False)
+        # Reload if already on usage page; navigate if coming from elsewhere
+        already_there = usage_page is not None
+        text = await _cdp_get_page_text(ws_url, skip_navigate=already_there)
         if not text:
             return None
 
