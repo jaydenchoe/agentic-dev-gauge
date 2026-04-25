@@ -12,6 +12,7 @@ const App = (() => {
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
   const trendData = {};
   const TREND_MAX = 40;
+  const NET_CAP_BPS = 100 * 1024 * 1024;
   let startTime = Date.now();
 
   function init() {
@@ -224,6 +225,18 @@ const App = (() => {
       if (detail) {
         detail.textContent = `${data.disk.used_gb.toFixed(0)} / ${data.disk.total_gb.toFixed(0)} GB`;
       }
+    }
+
+    if (data.network) {
+      const up = data.network.bytes_sent_per_sec;
+      const down = data.network.bytes_recv_per_sec;
+      const peak = Math.max(up, down);
+      const pct = Math.min(100, peak / NET_CAP_BPS * 100);
+      const th = t.network_percent || { warning: 50, critical: 80 };
+      const level = Charts.getLevel(pct, th.warning, th.critical);
+      updateBar('fillNetwork', 'valNetwork', 'cardNetwork', pct, level);
+      const detail = document.getElementById('netDetail');
+      if (detail) detail.textContent = `↑ ${Charts.formatBytes(up)}  ↓ ${Charts.formatBytes(down)}`;
     }
 
   }

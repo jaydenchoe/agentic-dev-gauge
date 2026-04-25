@@ -42,6 +42,34 @@ class TestPsutilAdapter:
         for core_pct in snapshot.cpu.per_core:
             assert 0 <= core_pct <= 100
 
+    @pytest.mark.asyncio
+    async def test_network_delta_clamps_negative_and_computes_rate(self):
+        import time
+        from types import SimpleNamespace
+        from src.adapters.system.psutil_adapter import PsutilMetricsAdapter
+
+        adapter = PsutilMetricsAdapter()
+        adapter._prev_net = SimpleNamespace(bytes_sent=1000, bytes_recv=2000)
+        adapter._prev_ts = time.monotonic() - 1.0
+
+        with patch(
+            "src.adapters.system.psutil_adapter.psutil.net_io_counters",
+            return_value=SimpleNamespace(bytes_sent=3000, bytes_recv=5000),
+        ):
+            network = adapter._network(1.0)
+
+        assert network.bytes_sent_per_sec == pytest.approx(2000, rel=0.1)
+        assert network.bytes_recv_per_sec == pytest.approx(3000, rel=0.1)
+
+        with patch(
+            "src.adapters.system.psutil_adapter.psutil.net_io_counters",
+            return_value=SimpleNamespace(bytes_sent=100, bytes_recv=200),
+        ):
+            network = adapter._network(1.0)
+
+        assert network.bytes_sent_per_sec == 0
+        assert network.bytes_recv_per_sec == 0
+
 
 # ---------------------------------------------------------------------------
 # Anthropic adapter (mock HTTP)
