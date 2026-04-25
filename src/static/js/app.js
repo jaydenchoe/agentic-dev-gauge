@@ -231,10 +231,17 @@ const App = (() => {
       const up = data.network.bytes_sent_per_sec;
       const down = data.network.bytes_recv_per_sec;
       const peak = Math.max(up, down);
-      const pct = Math.min(100, peak / NET_CAP_BPS * 100);
+      const cap = NET_CAP_BPS;
+      const pct = peak > 0 ? Math.min(100, Math.log10(peak + 1) / Math.log10(cap + 1) * 100) : 0;
       const th = t.network_percent || { warning: 50, critical: 80 };
       const level = Charts.getLevel(pct, th.warning, th.critical);
       updateBar('fillNetwork', 'valNetwork', 'cardNetwork', pct, level);
+      const formatted = Charts.formatBytes(peak); // e.g. '1.2 MB/s'
+      const parts = formatted.split(' ');
+      const num = parts[0];
+      const unit = parts.slice(1).join(' ');
+      const valEl = document.getElementById('valNetwork');
+      if (valEl) valEl.innerHTML = num + '<em>' + unit + '</em>';
       const detail = document.getElementById('netDetail');
       if (detail) detail.textContent = `↑ ${Charts.formatBytes(up)}  ↓ ${Charts.formatBytes(down)}`;
     }
