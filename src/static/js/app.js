@@ -13,6 +13,8 @@ const App = (() => {
   const trendData = {};
   const TREND_MAX = 40;
   const NET_CAP_BPS = 25 * 1024 * 1024;
+  let netSessionBytes = 0;
+  let netLastSampleAt = null;
   let startTime = Date.now();
 
   function init() {
@@ -186,6 +188,12 @@ const App = (() => {
     path.setAttribute('d', d);
   }
 
+  function formatTotal(bytes) {
+    const s = Charts.formatBytes(bytes);
+    // Strip trailing '/s' only if Charts.formatBytes appends it
+    return s.endsWith('/s') ? s.slice(0, -2) : s;
+  }
+
   // --- System Metrics Handler ---
 
   function handleSystemMetrics(data) {
@@ -228,8 +236,16 @@ const App = (() => {
     }
 
     if (data.network) {
+      const now = Date.now();
       const up = data.network.bytes_sent_per_sec;
       const down = data.network.bytes_recv_per_sec;
+      if (netLastSampleAt !== null) {
+        const elapsedSec = (now - netLastSampleAt) / 1000;
+        if (elapsedSec > 0 && elapsedSec < 10) {
+          netSessionBytes += (up + down) * elapsedSec;
+        }
+      }
+      netLastSampleAt = now;
       const peak = Math.max(up, down);
       const cap = NET_CAP_BPS;
       const pct = peak > 0 ? Math.min(100, Math.log10(peak + 1) / Math.log10(cap + 1) * 100) : 0;
@@ -243,7 +259,7 @@ const App = (() => {
       const valEl = document.getElementById('valNetwork');
       if (valEl) valEl.innerHTML = num + '<em>' + unit + '</em>';
       const detail = document.getElementById('netDetail');
-      if (detail) detail.textContent = `↑ ${Charts.formatBytes(up)}  ↓ ${Charts.formatBytes(down)}`;
+      if (detail) detail.textContent = `↑ ${Charts.formatBytes(up)}  ↓ ${Charts.formatBytes(down)}  Σ ${formatTotal(netSessionBytes)}`;
     }
 
   }
