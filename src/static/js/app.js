@@ -12,7 +12,7 @@ const App = (() => {
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
   const trendData = {};
   const TREND_MAX = 40;
-  const NET_CAP_BPS = 100 * 1024 * 1024;
+  const NET_CAP_BPS = 25 * 1024 * 1024;
   let startTime = Date.now();
 
   function init() {
