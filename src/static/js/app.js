@@ -57,6 +57,14 @@ const App = (() => {
     return thresholds.llm_usage_percent || { warning: 80, critical: 90 };
   }
 
+  function formatCtx(n) {
+    return n >= 1024 ? Math.round(n / 1024) + 'k' : String(n);
+  }
+
+  function formatTokRate(v) {
+    return v >= 1000 ? (v / 1000).toFixed(1) + 'k tok/s' : v.toFixed(1) + ' tok/s';
+  }
+
   function onConfigSaved(config) {
     if (config && config.thresholds) {
       thresholds = {};
@@ -622,7 +630,10 @@ const App = (() => {
 
     if (detailEl) {
       const parts = [data.model];
+      if (data.context_length) parts.push(formatCtx(data.context_length));
       if (data.vram_gb) parts.push(data.vram_gb + ' GB');
+      if (data.ttft_ms != null) parts.push('ttft ' + Math.round(data.ttft_ms) + 'ms');
+      if (data.prefill_tok_per_sec != null) parts.push('prefill ' + formatTokRate(data.prefill_tok_per_sec));
       if (data.benchmark_ago) parts.push(data.benchmark_ago);
       detailEl.textContent = parts.join(' · ');
     }

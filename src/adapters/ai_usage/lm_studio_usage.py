@@ -22,6 +22,9 @@ class LMStudioUsage:
     vram_percent: Optional[float] = None
     base_url: Optional[str] = None
     tok_per_sec: Optional[float] = None
+    context_length: Optional[int] = None
+    ttft_ms: Optional[float] = None
+    prefill_tok_per_sec: Optional[float] = None
     benchmark_ago: Optional[str] = None
     available: bool = False
 
@@ -33,6 +36,9 @@ class LMStudioUsage:
             "vram_percent": self.vram_percent,
             "base_url": self.base_url,
             "tok_per_sec": self.tok_per_sec,
+            "context_length": self.context_length,
+            "ttft_ms": self.ttft_ms,
+            "prefill_tok_per_sec": self.prefill_tok_per_sec,
             "benchmark_ago": self.benchmark_ago,
             "available": self.available,
         }
@@ -58,11 +64,16 @@ async def fetch_lm_studio_status(
         return LMStudioUsage(available=True)
 
     m = loaded_models[0]
+    context_length = m.get("loaded_context_length")
+    if context_length is None:
+        context_length = m.get("max_context_length")
+
     return LMStudioUsage(
         model=m.get("id"),
         parameter_size=None,
         vram_gb=None,
         vram_percent=None,
+        context_length=context_length,
         available=True,
     )
 
@@ -70,8 +81,8 @@ async def fetch_lm_studio_status(
 async def benchmark_lm_studio(
     host: str = "127.0.0.1",
     port: int = 1234,
-) -> Optional[float]:
-    """Run a short benchmark and return tok/s. Returns None if unavailable."""
+) -> Optional[dict]:
+    """Run a short benchmark and return metrics. Returns None if unavailable."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"http://{host}:{port}/api/v0/models")
@@ -86,7 +97,7 @@ async def benchmark_lm_studio(
         async with httpx.AsyncClient(timeout=60.0) as client:
             start = time.monotonic()
             resp = await client.post(
-                f"http://{host}:{port}/v1/chat/completions",
+                f"http://{host}:{port}/api/v0/chat/completions",
                 json={
                     "model": model_id,
                     "messages": [{"role": "user", "content": "Hello"}],
@@ -99,9 +110,30 @@ async def benchmark_lm_studio(
                 return None
             data = resp.json()
 
-        eval_count = data.get("usage", {}).get("completion_tokens", 0)
-        if eval_count > 0 and elapsed > 0:
-            return round(eval_count / elapsed, 1)
+        usage = data.get("usage", {})
+        stats = data.get("stats")
+        ttft_ms = None
+        prefill_tok_per_sec = None
+
+        if stats is not None:
+            tok_per_sec = round(stats["tokens_per_second"], 1)
+            time_to_first_token = stats.get("time_to_first_token")
+            if time_to_first_token is not None:
+                ttft_ms = round(time_to_first_token * 1000, 0)
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            if prompt_tokens > 0 and time_to_first_token and time_to_first_token > 0:
+                prefill_tok_per_sec = round(prompt_tokens / time_to_first_token, 1)
+        else:
+            eval_count = usage.get("completion_tokens", 0)
+            if eval_count <= 0 or elapsed <= 0:
+                return None
+            tok_per_sec = round(eval_count / elapsed, 1)
+
+        return {
+            "tok_per_sec": tok_per_sec,
+            "ttft_ms": ttft_ms,
+            "prefill_tok_per_sec": prefill_tok_per_sec,
+        }
     except Exception as exc:
         logger.warning("LM Studio benchmark failed: %s", exc)
     return None

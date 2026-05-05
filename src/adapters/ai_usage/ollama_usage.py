@@ -25,6 +25,9 @@ class OllamaUsage:
     vram_percent: Optional[float] = None  # VRAM as % of total unified memory
     base_url: Optional[str] = None
     tok_per_sec: Optional[float] = None  # benchmark result
+    context_length: Optional[int] = None
+    ttft_ms: Optional[float] = None
+    prefill_tok_per_sec: Optional[float] = None
     benchmark_ago: Optional[str] = None  # "2m ago"
     available: bool = False
 
@@ -36,6 +39,9 @@ class OllamaUsage:
             "vram_percent": self.vram_percent,
             "base_url": self.base_url,
             "tok_per_sec": self.tok_per_sec,
+            "context_length": self.context_length,
+            "ttft_ms": self.ttft_ms,
+            "prefill_tok_per_sec": self.prefill_tok_per_sec,
             "benchmark_ago": self.benchmark_ago,
             "available": self.available,
         }
@@ -70,6 +76,7 @@ async def fetch_ollama_status(
         parameter_size=details.get("parameter_size"),
         vram_gb=round(vram_bytes / (1024**3), 1) if vram_bytes else None,
         vram_percent=vram_pct,
+        context_length=m.get("context_length"),
         available=True,
     )
 
@@ -77,8 +84,8 @@ async def fetch_ollama_status(
 async def benchmark_ollama(
     host: str = "127.0.0.1",
     port: int = 11434,
-) -> Optional[float]:
-    """Run a short benchmark and return tok/s. Returns None if unavailable."""
+) -> Optional[dict]:
+    """Run a short benchmark and return metrics. Returns None if unavailable."""
     try:
         # Check if a model is loaded first
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -108,7 +115,20 @@ async def benchmark_ollama(
         eval_count = data.get("eval_count", 0)
         eval_duration = data.get("eval_duration", 0)
         if eval_count > 0 and eval_duration > 0:
-            return round(eval_count / (eval_duration / 1e9), 1)
+            tok_per_sec = round(eval_count / (eval_duration / 1e9), 1)
+            prompt_eval_count = data.get("prompt_eval_count", 0)
+            prompt_eval_duration = data.get("prompt_eval_duration", 0)
+            ttft_ms = round(prompt_eval_duration / 1e6, 0) if prompt_eval_duration > 0 else None
+            prefill_tok_per_sec = (
+                round(prompt_eval_count / (prompt_eval_duration / 1e9), 1)
+                if prompt_eval_count > 0 and prompt_eval_duration > 0
+                else None
+            )
+            return {
+                "tok_per_sec": tok_per_sec,
+                "ttft_ms": ttft_ms,
+                "prefill_tok_per_sec": prefill_tok_per_sec,
+            }
     except Exception as exc:
         logger.warning("Ollama benchmark failed: %s", exc)
     return None
