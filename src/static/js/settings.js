@@ -6,6 +6,7 @@ const Settings = (() => {
   let modal = null;
   let isOpen = false;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+  const DEFAULT_LM_STUDIO_BASE_URL = 'http://127.0.0.1:1234';
   const DEFAULT_GEEKMAGIC_URL = 'http://192.168.150.113';
 
   const API_KEY_FIELDS = [
@@ -71,6 +72,7 @@ const Settings = (() => {
 
       // Load gateway
       document.getElementById('ollamaBaseUrl').value = data.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
+      document.getElementById('lmStudioBaseUrl').value = data.lm_studio_base_url || DEFAULT_LM_STUDIO_BASE_URL;
       if (data.gateway_url) {
         document.getElementById('gatewayUrl').value = data.gateway_url;
       }
@@ -106,10 +108,12 @@ const Settings = (() => {
 
     // Gateway settings
     const ollamaBaseUrl = document.getElementById('ollamaBaseUrl').value.trim();
+    const lmStudioBaseUrl = document.getElementById('lmStudioBaseUrl').value.trim();
     const gwUrl = document.getElementById('gatewayUrl').value.trim();
     const gwKey = document.getElementById('gatewayKey').value.trim();
     const geekmagicUrl = document.getElementById('geekmagicUltraUrl').value.trim();
     config.ollama_base_url = ollamaBaseUrl || DEFAULT_OLLAMA_BASE_URL;
+    config.lm_studio_base_url = lmStudioBaseUrl || DEFAULT_LM_STUDIO_BASE_URL;
     if (gwUrl) config.gateway_url = gwUrl;
     if (gwKey) config.gateway_key = gwKey;
     config.geekmagic_ultra_url = geekmagicUrl;

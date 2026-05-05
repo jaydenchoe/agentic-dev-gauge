@@ -125,12 +125,14 @@ class DisplayService:
 
     def _render_local_llm(self):
         o = self._usage.ollama_latest
-        if o is None or not o.available:
+        lms = self._usage.lm_studio_latest
+        local_llm = o if o and o.available else lms
+        if local_llm is None or not local_llm.available:
             return render_local_llm_animated(None, None, None)
         return render_local_llm_animated(
-            model=o.model,
-            vram_pct=o.vram_percent,
-            tok_per_sec=o.tok_per_sec,
+            model=local_llm.model,
+            vram_pct=local_llm.vram_percent,
+            tok_per_sec=local_llm.tok_per_sec,
         )
 
     def _pct_from_usages(self, provider: str) -> Optional[float]:
@@ -153,7 +155,7 @@ class DisplayService:
 
     def on_data_updated(self, source: str) -> None:
         """Called by UsageService when data arrives. Immediately push the relevant page."""
-        page_map = {"claude": 2, "copilot": 3, "adapters": 3, "ollama": 4}
+        page_map = {"claude": 2, "copilot": 3, "adapters": 3, "ollama": 4, "lm_studio": 4}
         page = page_map.get(source)
         if page is None or self._task is None or self._task.done():
             return
