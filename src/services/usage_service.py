@@ -235,6 +235,8 @@ class UsageService:
                     # Preserve benchmark data from previous status
                     if self._ollama_latest and self._ollama_latest.tok_per_sec:
                         result.tok_per_sec = self._ollama_latest.tok_per_sec
+                        result.ttft_ms = self._ollama_latest.ttft_ms
+                        result.prefill_tok_per_sec = self._ollama_latest.prefill_tok_per_sec
                         result.benchmark_ago = _time_ago(self._ollama_last_benchmark_ts) if self._ollama_last_benchmark_ts else None
                     self._ollama_latest = result
                     self._notify("ollama")
@@ -247,14 +249,16 @@ class UsageService:
     async def _ollama_benchmark_loop(self) -> None:
         while True:
             try:
-                tks = await benchmark_ollama(self._ollama_host, self._ollama_port)
-                if tks is not None:
+                result = await benchmark_ollama(self._ollama_host, self._ollama_port)
+                if result is not None:
                     self._ollama_last_benchmark_ts = time.time()
                     if self._ollama_latest:
                         self._ollama_latest.base_url = self._ollama_base_url
-                        self._ollama_latest.tok_per_sec = tks
+                        self._ollama_latest.tok_per_sec = result["tok_per_sec"]
+                        self._ollama_latest.ttft_ms = result["ttft_ms"]
+                        self._ollama_latest.prefill_tok_per_sec = result["prefill_tok_per_sec"]
                         self._ollama_latest.benchmark_ago = "just now"
-                    logger.info("Ollama benchmark: %.1f tok/s", tks)
+                    logger.info("Ollama benchmark: %.1f tok/s", result["tok_per_sec"])
             except Exception:
                 logger.exception("Ollama benchmark error")
             await asyncio.sleep(self._ollama_benchmark_interval)
@@ -268,6 +272,8 @@ class UsageService:
                     # Preserve benchmark data from previous status
                     if self._lm_studio_latest and self._lm_studio_latest.tok_per_sec:
                         result.tok_per_sec = self._lm_studio_latest.tok_per_sec
+                        result.ttft_ms = self._lm_studio_latest.ttft_ms
+                        result.prefill_tok_per_sec = self._lm_studio_latest.prefill_tok_per_sec
                         result.benchmark_ago = _time_ago(self._lm_studio_last_benchmark_ts) if self._lm_studio_last_benchmark_ts else None
                     self._lm_studio_latest = result
                     self._notify("lm_studio")
@@ -280,14 +286,16 @@ class UsageService:
     async def _lm_studio_benchmark_loop(self) -> None:
         while True:
             try:
-                tks = await benchmark_lm_studio(self._lm_studio_host, self._lm_studio_port)
-                if tks is not None:
+                result = await benchmark_lm_studio(self._lm_studio_host, self._lm_studio_port)
+                if result is not None:
                     self._lm_studio_last_benchmark_ts = time.time()
                     if self._lm_studio_latest:
                         self._lm_studio_latest.base_url = self._lm_studio_base_url
-                        self._lm_studio_latest.tok_per_sec = tks
+                        self._lm_studio_latest.tok_per_sec = result["tok_per_sec"]
+                        self._lm_studio_latest.ttft_ms = result["ttft_ms"]
+                        self._lm_studio_latest.prefill_tok_per_sec = result["prefill_tok_per_sec"]
                         self._lm_studio_latest.benchmark_ago = "just now"
-                    logger.info("LM Studio benchmark: %.1f tok/s", tks)
+                    logger.info("LM Studio benchmark: %.1f tok/s", result["tok_per_sec"])
             except Exception:
                 logger.exception("LM Studio benchmark error")
             await asyncio.sleep(self._lm_studio_benchmark_interval)
