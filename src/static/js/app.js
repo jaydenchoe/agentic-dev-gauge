@@ -547,7 +547,7 @@ const App = (() => {
     const detailId = 'detail' + config.stem;
     let card = document.getElementById(cardId);
 
-    if (!data || !data.available) {
+    if (!data || !data.available || !data.model) {
       if (card) card.remove();
       sec.style.display = grid.children.length ? '' : 'none';
       return;
@@ -607,14 +607,6 @@ const App = (() => {
     const detailEl = document.getElementById(detailId);
 
     if (fillEl) fillEl.style.width = '0%';
-
-    if (!data.model) {
-      card.classList.add('idle');
-      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar-value muted'; }
-      if (detailEl) detailEl.textContent = '';
-      sec.style.display = grid.children.length ? '' : 'none';
-      return;
-    }
 
     card.classList.remove('idle');
 
