@@ -123,11 +123,13 @@ async def run_broadcast_loop(app: Any) -> None:
             claude_web = usage_svc.claude_web_latest
             copilot_api = usage_svc.copilot_api_latest
             ollama = usage_svc.ollama_latest
-            if manager.active_count > 0 and (usage_snapshot or claude_web or copilot_api or ollama):
+            lm_studio = usage_svc.lm_studio_latest
+            if manager.active_count > 0 and (usage_snapshot or claude_web or copilot_api or ollama or lm_studio):
                 usage_data = _serialise(usage_snapshot) if usage_snapshot else {}
                 usage_data["claude_web"] = claude_web.to_dict() if claude_web else None
                 usage_data["copilot_api"] = copilot_api.to_dict() if copilot_api else None
                 usage_data["ollama"] = ollama.to_dict() if ollama else None
+                usage_data["lm_studio"] = lm_studio.to_dict() if lm_studio else None
                 try:
                     await manager.broadcast("usage_update", usage_data)
                 except Exception:

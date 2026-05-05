@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api")
 _start_time = time.time()
 _ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 _DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+_DEFAULT_LM_STUDIO_BASE_URL = "http://127.0.0.1:1234"
 
 
 def _persist_env_updates(env_updates: dict[str, str]) -> None:
@@ -103,6 +104,7 @@ async def get_config(request: Request) -> dict:
         "providers": providers,
         "gateway_url": settings.openclaw_gateway_url or "",
         "ollama_base_url": settings.ollama_base_url or _DEFAULT_OLLAMA_BASE_URL,
+        "lm_studio_base_url": settings.lm_studio_base_url or _DEFAULT_LM_STUDIO_BASE_URL,
         "gateway_configured": bool(settings.openclaw_api_key),
         "geekmagic_ultra_url": settings.geekmagic_ultra_url or "",
     }
@@ -166,6 +168,10 @@ async def update_config(request: Request) -> dict:
         settings.ollama_base_url = body["ollama_base_url"] or _DEFAULT_OLLAMA_BASE_URL
         usage_svc.update_ollama_base_url(settings.ollama_base_url)
         env_updates["OLLAMA_BASE_URL"] = settings.ollama_base_url
+    if "lm_studio_base_url" in body:
+        settings.lm_studio_base_url = body["lm_studio_base_url"] or _DEFAULT_LM_STUDIO_BASE_URL
+        usage_svc.update_lm_studio_base_url(settings.lm_studio_base_url)
+        env_updates["LM_STUDIO_BASE_URL"] = settings.lm_studio_base_url
     if "geekmagic_ultra_url" in body:
         new_url = (body["geekmagic_ultra_url"] or "").strip() or None
         settings.geekmagic_ultra_url = new_url
@@ -207,6 +213,16 @@ async def ollama_usage(request: Request) -> Any:
     data = svc.ollama_latest
     if data is None:
         return {"error": "no data yet (Ollama running?)", "data": None}
+    return {"data": data.to_dict()}
+
+
+@router.get("/lm-studio-usage")
+async def lm_studio_usage(request: Request) -> Any:
+    """Return LM Studio local LLM status."""
+    svc = request.app.state.usage_service
+    data = svc.lm_studio_latest
+    if data is None:
+        return {"error": "no data yet (LM Studio running?)", "data": None}
     return {"data": data.to_dict()}
 
 

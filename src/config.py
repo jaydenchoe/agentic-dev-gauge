@@ -19,6 +19,7 @@ _DEFAULT_THRESHOLDS = [
     {"metric": "llm_usage_percent", "warning": 80, "critical": 90},
 ]
 _DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+_DEFAULT_LM_STUDIO_BASE_URL = "http://127.0.0.1:1234"
 
 
 class Settings(BaseSettings):
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
 
     # Ollama local/remote endpoint
     ollama_base_url: str = _DEFAULT_OLLAMA_BASE_URL
+    lm_studio_base_url: str = _DEFAULT_LM_STUDIO_BASE_URL
 
     # Chrome debug profile for CDP scraping
     chrome_debug_profile_dir: str = "~/.tiny-monitor/chrome-debug-profile"
@@ -75,6 +77,15 @@ class Settings(BaseSettings):
         if isinstance(v, str) and v.strip():
             return v.strip()
         return _DEFAULT_OLLAMA_BASE_URL
+
+    @field_validator("lm_studio_base_url", mode="before")
+    @classmethod
+    def default_lm_studio_base_url(cls, v: object) -> str:
+        if isinstance(v, str):
+            value = v.strip().rstrip("/")
+            if value:
+                return value
+        return _DEFAULT_LM_STUDIO_BASE_URL
 
     # Thresholds
     thresholds: list[ThresholdConfig] = [

@@ -161,6 +161,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         copilot_api_interval=settings.copilot_api_interval_sec,
         github_token=settings.github_token,
         ollama_base_url=settings.ollama_base_url,
+        lm_studio_base_url=settings.lm_studio_base_url,
     )
     alert_svc = AlertService(settings.thresholds, notifier)
 

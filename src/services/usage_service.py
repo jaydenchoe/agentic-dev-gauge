@@ -11,12 +11,14 @@ from urllib.parse import urlparse
 
 from src.adapters.ai_usage.claude_web_usage import ClaudeWebUsage, fetch_claude_web_usage
 from src.adapters.ai_usage.copilot_api_usage import CopilotApiUsage, fetch_copilot_api_usage
+from src.adapters.ai_usage.lm_studio_usage import LMStudioUsage, fetch_lm_studio_status, benchmark_lm_studio
 from src.adapters.ai_usage.ollama_usage import OllamaUsage, fetch_ollama_status, benchmark_ollama
 from src.core.models import TokenUsage, UsageSnapshot
 from src.core.ports.usage import UsagePort
 
 logger = logging.getLogger(__name__)
 _DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+_DEFAULT_LM_STUDIO_BASE_URL = "http://127.0.0.1:1234"
 
 
 def _time_ago(ts: float) -> str:
@@ -39,6 +41,17 @@ def _parse_ollama_endpoint(ollama_base_url: str) -> tuple[str, int]:
     return host, port
 
 
+def _parse_lm_studio_endpoint(lm_studio_base_url: str) -> tuple[str, int]:
+    candidate = (lm_studio_base_url or _DEFAULT_LM_STUDIO_BASE_URL).strip()
+    if "://" not in candidate:
+        candidate = f"http://{candidate}"
+
+    parsed = urlparse(candidate)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 1234
+    return host, port
+
+
 class UsageService:
     def __init__(
         self,
@@ -52,6 +65,9 @@ class UsageService:
         ollama_status_interval: float = 60.0,
         ollama_benchmark_interval: float = 300.0,
         ollama_base_url: str = _DEFAULT_OLLAMA_BASE_URL,
+        lm_studio_status_interval: float = 60.0,
+        lm_studio_benchmark_interval: float = 300.0,
+        lm_studio_base_url: str = _DEFAULT_LM_STUDIO_BASE_URL,
     ) -> None:
         self._adapters = adapters
         self._api_keys = api_keys
@@ -77,6 +93,15 @@ class UsageService:
         self._ollama_last_benchmark_ts: float = 0
         self._ollama_base_url = (ollama_base_url or _DEFAULT_OLLAMA_BASE_URL).strip() or _DEFAULT_OLLAMA_BASE_URL
         self._ollama_host, self._ollama_port = _parse_ollama_endpoint(self._ollama_base_url)
+        # LM Studio
+        self._lm_studio_status_interval = lm_studio_status_interval
+        self._lm_studio_benchmark_interval = lm_studio_benchmark_interval
+        self._lm_studio_latest: LMStudioUsage | None = None
+        self._lm_studio_status_task: asyncio.Task | None = None
+        self._lm_studio_benchmark_task: asyncio.Task | None = None
+        self._lm_studio_last_benchmark_ts: float = 0.0
+        self._lm_studio_base_url = (lm_studio_base_url or _DEFAULT_LM_STUDIO_BASE_URL).strip().rstrip("/") or _DEFAULT_LM_STUDIO_BASE_URL
+        self._lm_studio_host, self._lm_studio_port = _parse_lm_studio_endpoint(self._lm_studio_base_url)
         self._on_data_update: Optional[Callable[[str], None]] = None
 
     @property
@@ -94,6 +119,10 @@ class UsageService:
     @property
     def ollama_latest(self) -> Optional[OllamaUsage]:
         return self._ollama_latest
+
+    @property
+    def lm_studio_latest(self) -> Optional[LMStudioUsage]:
+        return self._lm_studio_latest
 
     def update_api_keys(self, api_keys: dict[str, str]) -> None:
         self._api_keys = api_keys
@@ -113,6 +142,22 @@ class UsageService:
         self._ollama_host, self._ollama_port = _parse_ollama_endpoint(self._ollama_base_url)
         if self._ollama_latest:
             self._ollama_latest.base_url = self._ollama_base_url
+
+    def update_lm_studio_base_url(self, lm_studio_base_url: str) -> None:
+        self._lm_studio_base_url = (lm_studio_base_url or _DEFAULT_LM_STUDIO_BASE_URL).strip().rstrip("/") or _DEFAULT_LM_STUDIO_BASE_URL
+        self._lm_studio_host, self._lm_studio_port = _parse_lm_studio_endpoint(self._lm_studio_base_url)
+        if self._lm_studio_latest:
+            self._lm_studio_latest.base_url = self._lm_studio_base_url
+
+        status_was_started = self._lm_studio_status_task is not None
+        benchmark_was_started = self._lm_studio_benchmark_task is not None
+        for task in (self._lm_studio_status_task, self._lm_studio_benchmark_task):
+            if task and not task.done():
+                task.cancel()
+        if status_was_started:
+            self._lm_studio_status_task = asyncio.create_task(self._lm_studio_status_loop())
+        if benchmark_was_started:
+            self._lm_studio_benchmark_task = asyncio.create_task(self._lm_studio_benchmark_loop())
 
     async def collect_once(self) -> UsageSnapshot:
         all_usages: list[TokenUsage] = []
@@ -214,6 +259,39 @@ class UsageService:
                 logger.exception("Ollama benchmark error")
             await asyncio.sleep(self._ollama_benchmark_interval)
 
+    async def _lm_studio_status_loop(self) -> None:
+        while True:
+            try:
+                result = await fetch_lm_studio_status(self._lm_studio_host, self._lm_studio_port)
+                if result:
+                    result.base_url = self._lm_studio_base_url
+                    # Preserve benchmark data from previous status
+                    if self._lm_studio_latest and self._lm_studio_latest.tok_per_sec:
+                        result.tok_per_sec = self._lm_studio_latest.tok_per_sec
+                        result.benchmark_ago = _time_ago(self._lm_studio_last_benchmark_ts) if self._lm_studio_last_benchmark_ts else None
+                    self._lm_studio_latest = result
+                    self._notify("lm_studio")
+                    if result.model:
+                        logger.info("LM Studio: %s (%.1f GB VRAM)", result.model, result.vram_gb or 0)
+            except Exception:
+                logger.exception("LM Studio status collection error")
+            await asyncio.sleep(self._lm_studio_status_interval)
+
+    async def _lm_studio_benchmark_loop(self) -> None:
+        while True:
+            try:
+                tks = await benchmark_lm_studio(self._lm_studio_host, self._lm_studio_port)
+                if tks is not None:
+                    self._lm_studio_last_benchmark_ts = time.time()
+                    if self._lm_studio_latest:
+                        self._lm_studio_latest.base_url = self._lm_studio_base_url
+                        self._lm_studio_latest.tok_per_sec = tks
+                        self._lm_studio_latest.benchmark_ago = "just now"
+                    logger.info("LM Studio benchmark: %.1f tok/s", tks)
+            except Exception:
+                logger.exception("LM Studio benchmark error")
+            await asyncio.sleep(self._lm_studio_benchmark_interval)
+
     def start(self) -> None:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
@@ -225,10 +303,15 @@ class UsageService:
             self._ollama_status_task = asyncio.create_task(self._ollama_status_loop())
         if self._ollama_benchmark_task is None or self._ollama_benchmark_task.done():
             self._ollama_benchmark_task = asyncio.create_task(self._ollama_benchmark_loop())
+        if self._lm_studio_status_task is None or self._lm_studio_status_task.done():
+            self._lm_studio_status_task = asyncio.create_task(self._lm_studio_status_loop())
+        if self._lm_studio_benchmark_task is None or self._lm_studio_benchmark_task.done():
+            self._lm_studio_benchmark_task = asyncio.create_task(self._lm_studio_benchmark_loop())
 
     async def stop(self) -> None:
         for task in (self._task, self._claude_web_task, self._copilot_api_task,
-                     self._ollama_status_task, self._ollama_benchmark_task):
+                     self._ollama_status_task, self._ollama_benchmark_task,
+                     self._lm_studio_status_task, self._lm_studio_benchmark_task):
             if task and not task.done():
                 task.cancel()
                 try:

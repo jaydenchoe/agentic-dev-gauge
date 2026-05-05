@@ -10,6 +10,7 @@ const App = (() => {
   const codexUsageState = {};
   const CDP_TIMEOUT_MS = 30000;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+  const DEFAULT_LM_STUDIO_BASE_URL = 'http://127.0.0.1:1234';
   const trendData = {};
   const TREND_MAX = 40;
   const NET_CAP_BPS = 25 * 1024 * 1024;
@@ -95,13 +96,14 @@ const App = (() => {
 
   async function fetchInitialData() {
     try {
-      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes] = await Promise.allSettled([
+      const [metricsRes, configRes, cwRes, usageRes, copilotRes, ollamaRes, lmStudioRes] = await Promise.allSettled([
         fetch('/api/metrics'),
         fetch('/api/settings'),
         fetch('/api/claude-web-usage'),
         fetch('/api/usage'),
         fetch('/api/copilot-usage'),
         fetch('/api/ollama-usage'),
+        fetch('/api/lm-studio-usage'),
       ]);
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
@@ -118,6 +120,8 @@ const App = (() => {
         }
         const ollamaInput = document.getElementById('ollamaBaseUrl');
         if (ollamaInput) ollamaInput.value = config.ollama_base_url || DEFAULT_OLLAMA_BASE_URL;
+        const lmStudioInput = document.getElementById('lmStudioBaseUrl');
+        if (lmStudioInput) lmStudioInput.value = config.lm_studio_base_url || DEFAULT_LM_STUDIO_BASE_URL;
       }
 
       if (cwRes.status === 'fulfilled' && cwRes.value.ok) {
@@ -138,6 +142,11 @@ const App = (() => {
       if (ollamaRes.status === 'fulfilled' && ollamaRes.value.ok) {
         const data = await ollamaRes.value.json();
         handleOllama(data.data);
+      }
+
+      if (lmStudioRes.status === 'fulfilled' && lmStudioRes.value.ok) {
+        const data = await lmStudioRes.value.json();
+        handleLmStudio(data.data);
       }
     } catch (e) {
       // Server not running yet
@@ -381,6 +390,10 @@ const App = (() => {
       handleOllama(data.ollama);
     }
 
+    if (data.lm_studio) {
+      handleLmStudio(data.lm_studio);
+    }
+
     // Process per-provider token usages
     const usages = data.usages || [];
     for (const usage of usages) {
@@ -524,6 +537,47 @@ const App = (() => {
     const card = document.getElementById('cardOllama');
     const valEl = document.getElementById('valOllama');
     const detailEl = document.getElementById('detailOllama');
+
+    if (!data.available) {
+      if (card) card.classList.add('idle');
+      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar-value muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    if (!data.model) {
+      if (card) card.classList.add('idle');
+      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar-value muted'; }
+      if (detailEl) detailEl.textContent = '';
+      return;
+    }
+
+    if (card) card.classList.remove('idle');
+
+    if (valEl) {
+      if (data.tok_per_sec != null) {
+        valEl.innerHTML = data.tok_per_sec + '<em>tok/s</em>';
+        valEl.className = 'bar-value tnum';
+      } else {
+        valEl.textContent = 'ready';
+        valEl.className = 'bar-value muted';
+      }
+    }
+
+    if (detailEl) {
+      const parts = [data.model];
+      if (data.vram_gb) parts.push(data.vram_gb + ' GB');
+      if (data.benchmark_ago) parts.push(data.benchmark_ago);
+      detailEl.textContent = parts.join(' · ');
+    }
+  }
+
+  function handleLmStudio(data) {
+    if (!data) return;
+
+    const card = document.getElementById('cardLmStudio');
+    const valEl = document.getElementById('valLmStudio');
+    const detailEl = document.getElementById('detailLmStudio');
 
     if (!data.available) {
       if (card) card.classList.add('idle');
