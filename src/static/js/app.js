@@ -139,15 +139,19 @@ const App = (() => {
         handleCopilotApi(data.data);
       }
 
+      let ollamaData = null;
       if (ollamaRes.status === 'fulfilled' && ollamaRes.value.ok) {
         const data = await ollamaRes.value.json();
-        handleOllama(data.data);
+        ollamaData = data ? data.data : null;
       }
+      renderLocalLlmCard('ollama', ollamaData);
 
+      let lmStudioData = null;
       if (lmStudioRes.status === 'fulfilled' && lmStudioRes.value.ok) {
         const data = await lmStudioRes.value.json();
-        handleLmStudio(data.data);
+        lmStudioData = data ? data.data : null;
       }
+      renderLocalLlmCard('lm_studio', lmStudioData);
     } catch (e) {
       // Server not running yet
     }
@@ -385,14 +389,8 @@ const App = (() => {
       handleCopilotApi(data.copilot_api);
     }
 
-    // Forward nested ollama data
-    if (data.ollama) {
-      handleOllama(data.ollama);
-    }
-
-    if (data.lm_studio) {
-      handleLmStudio(data.lm_studio);
-    }
+    renderLocalLlmCard('ollama', data.ollama);
+    renderLocalLlmCard('lm_studio', data.lm_studio);
 
     // Process per-provider token usages
     const usages = data.usages || [];
@@ -529,30 +527,96 @@ const App = (() => {
     }
   }
 
-  // --- Ollama Handler ---
+  // --- Local LLM Handler ---
 
-  function handleOllama(data) {
-    if (!data) return;
+  function renderLocalLlmCard(provider, data) {
+    const providerMap = {
+      ollama: { label: 'Ollama', stem: 'Ollama' },
+      lm_studio: { label: 'LM Studio', stem: 'LmStudio' },
+    };
+    const config = providerMap[provider];
+    if (!config) return;
 
-    const card = document.getElementById('cardOllama');
-    const valEl = document.getElementById('valOllama');
-    const detailEl = document.getElementById('detailOllama');
+    const sec = document.getElementById('secLocal');
+    const grid = document.getElementById('localLlmGrid');
+    if (!sec || !grid) return;
 
-    if (!data.available) {
-      if (card) card.classList.add('idle');
-      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar-value muted'; }
-      if (detailEl) detailEl.textContent = '';
+    const cardId = 'card' + config.stem;
+    const fillId = 'fill' + config.stem;
+    const valId = 'val' + config.stem;
+    const detailId = 'detail' + config.stem;
+    let card = document.getElementById(cardId);
+
+    if (!data || !data.available) {
+      if (card) card.remove();
+      sec.style.display = grid.children.length ? '' : 'none';
       return;
     }
+
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'bar local';
+      card.id = cardId;
+
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill';
+      fill.id = fillId;
+      fill.style.width = '0%';
+      card.appendChild(fill);
+
+      const ticks = document.createElement('div');
+      ticks.className = 'bar-ticks';
+      [25, 50, 75].forEach(left => {
+        const tick = document.createElement('div');
+        tick.className = 'bar-tick';
+        tick.style.left = left + '%';
+        ticks.appendChild(tick);
+      });
+      card.appendChild(ticks);
+
+      const body = document.createElement('div');
+      body.className = 'bar-body';
+
+      const label = document.createElement('span');
+      label.className = 'bar-label';
+      label.textContent = config.label;
+      body.appendChild(label);
+
+      const val = document.createElement('span');
+      val.className = 'bar-value tnum muted';
+      val.id = valId;
+      val.textContent = '--';
+      body.appendChild(val);
+
+      const detail = document.createElement('span');
+      detail.className = 'bar-detail';
+      detail.id = detailId;
+      body.appendChild(detail);
+
+      card.appendChild(body);
+
+      if (provider === 'ollama') {
+        grid.insertBefore(card, document.getElementById('cardLmStudio'));
+      } else {
+        grid.appendChild(card);
+      }
+    }
+
+    const fillEl = document.getElementById(fillId);
+    const valEl = document.getElementById(valId);
+    const detailEl = document.getElementById(detailId);
+
+    if (fillEl) fillEl.style.width = '0%';
 
     if (!data.model) {
-      if (card) card.classList.add('idle');
+      card.classList.add('idle');
       if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar-value muted'; }
       if (detailEl) detailEl.textContent = '';
+      sec.style.display = grid.children.length ? '' : 'none';
       return;
     }
 
-    if (card) card.classList.remove('idle');
+    card.classList.remove('idle');
 
     if (valEl) {
       if (data.tok_per_sec != null) {
@@ -570,47 +634,8 @@ const App = (() => {
       if (data.benchmark_ago) parts.push(data.benchmark_ago);
       detailEl.textContent = parts.join(' · ');
     }
-  }
 
-  function handleLmStudio(data) {
-    if (!data) return;
-
-    const card = document.getElementById('cardLmStudio');
-    const valEl = document.getElementById('valLmStudio');
-    const detailEl = document.getElementById('detailLmStudio');
-
-    if (!data.available) {
-      if (card) card.classList.add('idle');
-      if (valEl) { valEl.textContent = 'offline'; valEl.className = 'bar-value muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    if (!data.model) {
-      if (card) card.classList.add('idle');
-      if (valEl) { valEl.textContent = 'no model'; valEl.className = 'bar-value muted'; }
-      if (detailEl) detailEl.textContent = '';
-      return;
-    }
-
-    if (card) card.classList.remove('idle');
-
-    if (valEl) {
-      if (data.tok_per_sec != null) {
-        valEl.innerHTML = data.tok_per_sec + '<em>tok/s</em>';
-        valEl.className = 'bar-value tnum';
-      } else {
-        valEl.textContent = 'ready';
-        valEl.className = 'bar-value muted';
-      }
-    }
-
-    if (detailEl) {
-      const parts = [data.model];
-      if (data.vram_gb) parts.push(data.vram_gb + ' GB');
-      if (data.benchmark_ago) parts.push(data.benchmark_ago);
-      detailEl.textContent = parts.join(' · ');
-    }
+    sec.style.display = grid.children.length ? '' : 'none';
   }
 
   return { init, onConfigSaved };
