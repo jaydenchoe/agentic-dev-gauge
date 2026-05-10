@@ -290,6 +290,8 @@ body { font-family: var(--sans); background: var(--ink-0); color: var(--fg-0); o
 }
 .mic-enable:hover { color: var(--fg-0); background: oklch(0.14 0.004 260 / 0.5); }
 .mic-enable svg { opacity: 0.8; }
+.mic-strip.live { cursor: pointer; }
 .mic-strip.live .mic-enable { display: none; }
+.mic-strip.live:hover .mic-head .dot { box-shadow: 0 0 0 3px oklch(0.65 0.18 25 / 0.25); }
 .mic-strip.error .mic-enable { color: var(--crit); }
 .hidden { display: none !important; }
