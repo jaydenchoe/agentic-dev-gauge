@@ -77,6 +77,8 @@ Click the gear icon to edit thresholds, API keys, Ollama / LM Studio / Gateway /
 
 Built on **Hexagonal Architecture** (Ports & Adapters):
 
+![Hexagonal Architecture](docs/hexagonal_architecture_v2.png)
+
 ```
 src/
   core/          # Domain models, Port (ABC) interfaces
