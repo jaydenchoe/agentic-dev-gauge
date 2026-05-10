@@ -2,7 +2,19 @@ __pycache__/
 *.pyc
 .env
 .claude/settings.local.json
+.claude/worktrees/
 node_modules/
 package.json
 package-lock.json
 _workspace/geekmagic/out/
+
+# OS / editor
+.DS_Store
+.tmp/
+
+# Python tooling
+.venv/
+.pytest_cache/
+
+# Local archives
+*.tar.gz
