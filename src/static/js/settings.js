@@ -7,7 +7,7 @@ const Settings = (() => {
   let isOpen = false;
   const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
   const DEFAULT_LM_STUDIO_BASE_URL = 'http://127.0.0.1:1234';
-  const DEFAULT_GEEKMAGIC_URL = 'http://192.168.150.113';
+  const DEFAULT_GEEKMAGIC_URL = '';
 
   const API_KEY_FIELDS = [
     { id: 'keyCodex', key: 'codex_api_key', provider: 'codex' },
