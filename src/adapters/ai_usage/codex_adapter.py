@@ -325,4 +325,6 @@ class CodexUsageAdapter(UsagePort):
             logger.warning("Codex invalid reset_at value: %s", reset_at)
             return None
 
-        return reset_dt.strftime("%Y-%m-%d %H:%M UTC")
+        from datetime import timedelta
+        kst = reset_dt.astimezone(timezone(timedelta(hours=9)))
+        return kst.strftime("%Y-%m-%d %H:%M KST")

@@ -51,8 +51,10 @@ class ZhipuAIUsageAdapter(UsagePort):
             reset_ts = limit.get("nextResetTime")
             reset_text = None
             if reset_ts:
+                from datetime import timedelta
                 reset_dt = datetime.fromtimestamp(reset_ts / 1000, tz=timezone.utc)
-                reset_text = reset_dt.strftime("%Y-%m-%d %H:%M UTC")
+                kst = reset_dt.astimezone(timezone(timedelta(hours=9)))
+                reset_text = kst.strftime("%Y-%m-%d %H:%M KST")
 
             if limit_type == "TIME_LIMIT":
                 results.append(TokenUsage(
