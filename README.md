@@ -1,65 +1,77 @@
 # Agentic Dev Gauge
 
-A real-time dashboard for monitoring system resources and AI coding agent quota usage at a glance. Built for developers who use multiple AI coding assistants (Claude, GitHub Copilot, ZhipuAI) and need to keep an eye on their usage limits.
+A real-time dashboard for monitoring system resources and AI coding agent quota usage at a glance. Built for developers who juggle multiple AI coding assistants (Claude, GitHub Copilot, ZhipuAI, Codex, local LLMs) and need to keep an eye on usage limits.
 
 ![Dashboard Screenshot](docs/screenshot.png)
 
 ## What It Monitors
 
 ### System Resources
-- **CPU** usage percentage
-- **Memory** usage with GB breakdown
-- **Disk** usage with capacity info
+- **CPU**, **Memory** (GB), **Disk** (GB) — via psutil (cross-platform)
+- Optional **macmon** backend for richer Apple Silicon metrics (macOS only)
 
 ### AI Coding Agent Quotas
-- **Claude** (via CDP scraping) — Session (5h rolling), Weekly, Sonnet, Extra ($) usage
-- **GitHub Copilot** (via internal API) — Premium request quota with reset date
-- **ZhipuAI GLM** (via REST API) — Monthly token usage and MCP tool call quota
+Every adapter is **optional** — if a key/login is missing, that card simply doesn't render.
 
-All metrics update in real-time via WebSocket with color-coded warning (orange at 80%) and critical (red at 90%) thresholds.
+| Provider | Method | What you need |
+|---|---|---|
+| Claude | CDP scraping of `claude.ai/settings/usage` | Logged-in Chrome debug profile |
+| GitHub Copilot | Internal API | `gh auth login` |
+| Codex (ChatGPT) | CDP cookie + JWT from `chatgpt.com` | Logged-in Chrome debug profile |
+| ZhipuAI GLM | REST API | `ZHIPUAI_API_KEY` |
+| Ollama (local) | `/api/ps` + benchmark | Ollama running, model loaded |
+| LM Studio (local) | `/api/v0/models` + benchmark | LM Studio server running, model loaded |
+
+All metrics stream via WebSocket with color-coded warning (orange ≥80%) and critical (red ≥90%) thresholds.
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- Google Chrome (for Claude CDP scraping)
-- `gh` CLI authenticated (for Copilot quota — `gh auth login`)
+- **Python 3.14**
+- **macOS** is the primary target. The dashboard runs on Linux/Windows but `macmon`, the Chrome auto-launch flow, and `run.sh` (zsh/bash) are macOS-tuned.
+- **Google Chrome** — required only if you want Claude or Codex usage (CDP scraping)
+- **`gh` CLI** authenticated — required only for the Copilot card
 
 ### Install & Run
 
 ```bash
-git clone https://github.com/jaydenchoe/openclaw_tiny_monitor.git
-cd openclaw_tiny_monitor
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# Configure API keys (optional)
-cp .env.example .env
-# Edit .env with your ZhipuAI API key
-
-# Start the server
-python -m src.main
+git clone https://github.com/jaydenchoe/agentic-dev-gauge.git
+cd agentic-dev-gauge
+cp .env.example .env             # fill in keys you actually have
+bash run.sh                      # creates .venv, installs deps, runs uvicorn
 ```
 
-The dashboard opens automatically in Chrome app mode (no address bar) at `http://localhost:8080`.
+`run.sh` handles venv creation and dependency install — using it avoids `python` vs `python3` and PATH issues on macOS. The dashboard opens automatically in Chrome `--app` mode at `http://localhost:8080`.
+
+### Enabling Claude / Codex usage cards
+
+The Claude and Codex cards scrape a logged-in Chrome session over the Chrome DevTools Protocol. On first launch the server spawns a dedicated debug-profile Chrome at `~/.tiny-monitor/chrome-debug-profile` on port `9222`. **Log in to claude.ai (and chatgpt.com if you want Codex) inside that window once** — the cards will populate within ~5 minutes.
+
+To disable auto-launch and manage Chrome yourself:
+
+```
+CHROME_DEBUG_AUTO_LAUNCH=false
+```
 
 ## Configuration
 
 ### Environment Variables (`.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `ZHIPUAI_API_KEY` | ZhipuAI API key for GLM quota monitoring |
-| `THRESHOLDS` | JSON array of warning/critical thresholds |
-| `OPENCLAW_GATEWAY_URL` | OpenClaw Gateway URL for alert notifications |
-| `OPENCLAW_API_KEY` | OpenClaw Gateway API key |
+| Variable | Default | Description |
+|---|---|---|
+| `ZHIPUAI_API_KEY` | — | ZhipuAI GLM quota |
+| `CODEX_API_KEY` | — | Codex bearer (alternative to CDP) |
+| `THRESHOLDS` | sane defaults | JSON array of warning/critical thresholds |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
+| `LM_STUDIO_BASE_URL` | `http://127.0.0.1:1234` | LM Studio endpoint |
+| `OPENCLAW_GATEWAY_URL` / `OPENCLAW_API_KEY` | — | Alert notifications (optional) |
+| `GEEKMAGIC_ULTRA_URL` | blank | GeekMagic SmallTV Ultra external display (optional) |
+| `CHROME_DEBUG_PORT` | `9222` | CDP port |
+| `CHROME_DEBUG_AUTO_LAUNCH` | `true` | Spawn debug Chrome on startup |
 
 ### Settings UI
 
-Click the gear icon in the dashboard to configure:
-- API keys
-- Warning/critical thresholds for system metrics and LLM usage
-- OpenClaw Gateway connection
+Click the gear icon to edit thresholds, API keys, Ollama / LM Studio / Gateway / GeekMagic URLs without restarting.
 
 ## Architecture
 
@@ -69,35 +81,27 @@ Built on **Hexagonal Architecture** (Ports & Adapters):
 src/
   core/          # Domain models, Port (ABC) interfaces
   services/      # MonitorService, UsageService, AlertService
-  adapters/      # Implementations: system/, ai_usage/, notification/
+  adapters/      # Implementations: system/, ai_usage/, notification/, display/
   api/           # REST routes, WebSocket endpoints
   static/        # Frontend (vanilla JS + CSS, no framework)
 ```
 
-### Data Sources
-
-| Provider | Method | Auth |
-|----------|--------|------|
-| Claude | Chrome DevTools Protocol (CDP) scraping | Browser login session |
-| Copilot | `api.github.com/copilot_internal/user` | `gh auth token` (automatic) |
-| ZhipuAI | REST API `/api/monitor/usage/quota/limit` | API key |
-| System | psutil (cross-platform) | None |
-
 ### Tech Stack
-- **Backend**: Python, FastAPI, uvicorn, pydantic-settings
-- **Frontend**: Vanilla JS + CSS (no framework)
-- **System metrics**: psutil
+- **Backend**: Python 3.14, FastAPI, uvicorn, pydantic-settings
+- **Frontend**: Vanilla JS + CSS
+- **System metrics**: psutil (+ macmon on Apple Silicon)
 - **Real-time**: WebSocket
 - **HTTP client**: httpx (async)
 
 ## Features
 
 - Real-time WebSocket streaming (2s system metrics, 60s usage updates)
-- Chrome `--app` mode auto-launch for clean fullscreen display
-- Duplicate window detection (won't open twice on server restart)
-- Configurable warning/critical thresholds via Settings UI
-- Alert notifications via OpenClaw Gateway
-- Responsive layout optimized for dedicated mini monitors (960x540)
+- Local LLM cards render dynamically — appear when a model loads, disappear when it unloads
+- TTFT, prefill tok/s, decode tok/s, and context size for local LLMs
+- Chrome `--app` mode auto-launch (macOS) with duplicate-window detection
+- Configurable warning/critical thresholds
+- Optional alert push via OpenClaw Gateway and external GeekMagic SmallTV Ultra display
+- Responsive layout optimized for 960x540 mini monitors up to iPad
 
 ## License
 
