@@ -706,7 +706,35 @@ document.addEventListener('DOMContentLoaded', App.init);
       enable.childNodes[enable.childNodes.length - 1].textContent = ' Permission denied — click to retry';
     }
   }
-  enable.addEventListener('click', start);
+
+  function stop() {
+    running = false;
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
+    srcNode = analyserL = analyserR = null;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx2d.clearRect(0, 0, w, h);
+    strip.classList.remove('live');
+    label.textContent = 'mic · offline';
+    if (peakEl) peakEl.textContent = '—';
+    if (rmsEl) rmsEl.textContent = '—';
+  }
+
+  function toggle(e) {
+    if (e) e.stopPropagation();
+    if (running) stop(); else start();
+  }
+  enable.addEventListener('click', toggle);
+  strip.addEventListener('click', (e) => {
+    if (!running) return;
+    toggle(e);
+  });
 
   function hueForBar(i, total) {
     const t = i / (total - 1);
