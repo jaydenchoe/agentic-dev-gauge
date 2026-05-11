@@ -1,4 +1,3 @@
-# hello world
 """Agentic Dev Gauge — FastAPI application entry point."""
 
 from __future__ import annotations
