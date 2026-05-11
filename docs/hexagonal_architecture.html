@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hexagonal Architecture — Study Handout</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 48px;
+  }
+
+  /* ── Hexagon diagram ── */
+  .hex-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 56px;
+  }
+
+  .hex-wrap {
+    position: relative;
+    width: 600px;
+    height: 600px;
+  }
+
+  .layer {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: 2px solid transparent;
+  }
+
+  .layer:hover { filter: brightness(1.2); transform: scale(1.02); }
+  .layer.active { filter: brightness(1.3); }
+
+  .l-external {
+    width: 600px; height: 600px;
+    top: 0; left: 0;
+    background: radial-gradient(circle, transparent 82%, oklch(0.35 0.08 200 / 0.4) 100%);
+    border: 2px dashed #475569;
+  }
+  .l-adapter {
+    width: 460px; height: 460px;
+    top: 70px; left: 70px;
+    background: radial-gradient(circle, transparent 74%, oklch(0.3 0.1 260 / 0.5) 100%);
+    border: 2px solid #3b5bdb44;
+  }
+  .l-port {
+    width: 340px; height: 340px;
+    top: 130px; left: 130px;
+    background: radial-gradient(circle, transparent 62%, oklch(0.28 0.12 280 / 0.6) 100%);
+    border: 2px dashed #f59e0b88;
+  }
+  .l-service {
+    width: 230px; height: 230px;
+    top: 185px; left: 185px;
+    background: radial-gradient(circle, transparent 52%, oklch(0.25 0.1 160 / 0.7) 100%);
+    border: 2px solid #10b98144;
+  }
+  .l-core {
+    width: 130px; height: 130px;
+    top: 235px; left: 235px;
+    background: radial-gradient(circle, oklch(0.22 0.15 270 / 0.9), oklch(0.18 0.1 280 / 0.7));
+    border: 2px solid #a78bfa;
+    box-shadow: 0 0 32px oklch(0.5 0.2 270 / 0.4);
+  }
+
+  .layer-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .l-external .layer-label { top: 14px; color: #94a3b8; }
+  .l-adapter .layer-label  { top: 14px; color: #60a5fa; }
+  .l-port .layer-label     { top: 10px; color: #f59e0b; font-size: 10px; }
+  .l-service .layer-label  { top: 10px; color: #34d399; }
+  .l-core .layer-label     { top: 8px; color: #c4b5fd; font-size: 10px; }
+
+  /* Adapter badges around the circle */
+  .badge {
+    position: absolute;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .badge:hover { border-color: #60a5fa; color: #60a5fa; background: #1e3a5f; }
+
+  /* Dependency arrows (SVG overlay) */
+  .arrows-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* ── Info panel ── */
+  .panel-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 960px;
+    margin: 0 auto 48px;
+  }
+
+  .panel-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .panel-card.pc-core::before   { background: #a78bfa; }
+  .panel-card.pc-service::before { background: #34d399; }
+  .panel-card.pc-port::before   { background: #f59e0b; }
+  .panel-card.pc-adapter::before { background: #60a5fa; }
+
+  .panel-card:hover { border-color: #475569; transform: translateY(-2px); }
+
+  .panel-card h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; }
+  .pc-core h3    { color: #a78bfa; }
+  .pc-service h3 { color: #34d399; }
+  .pc-port h3    { color: #f59e0b; }
+  .pc-adapter h3 { color: #60a5fa; }
+
+  .panel-card .tag {
+    display: inline-block;
+    font-size: 10px;
+    background: #0f172a;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-bottom: 10px;
+    color: #64748b;
+    font-family: monospace;
+  }
+
+  .panel-card p { font-size: 0.82rem; color: #94a3b8; line-height: 1.5; }
+
+  /* ── Key insights ── */
+  .insights {
+    max-width: 960px;
+    margin: 0 auto 48px;
+  }
+
+  .insights h2 {
+    font-size: 1rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+
+  .insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .insight {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .insight .icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .insight .text strong { display: block; font-size: 0.88rem; margin-bottom: 4px; color: #e2e8f0; }
+  .insight .text span { font-size: 0.8rem; color: #64748b; line-height: 1.5; }
+
+  /* ── Comparison ── */
+  .compare {
+    max-width: 960px;
+    margin: 0 auto 48px;
+  }
+
+  .compare h2 {
+    font-size: 1rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .compare-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .compare-card h3 { font-size: 0.9rem; margin-bottom: 12px; color: #a78bfa; }
+  .compare-card ul { list-style: none; }
+  .compare-card li {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    padding: 5px 0;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    gap: 8px;
+  }
+  .compare-card li::before { content: '→'; color: #475569; flex-shrink: 0; }
+
+  /* ── Detail popup ── */
+  .detail-box {
+    max-width: 960px;
+    margin: 0 auto 48px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 24px;
+    display: none;
+  }
+
+  .detail-box.visible { display: block; animation: fadeIn 0.2s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .detail-box h3 { font-size: 1rem; margin-bottom: 12px; }
+  .detail-box pre {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: #94a3b8;
+  }
+
+  .kw-purple { color: #a78bfa; }
+  .kw-green  { color: #34d399; }
+  .kw-yellow { color: #fbbf24; }
+  .kw-blue   { color: #60a5fa; }
+  .kw-gray   { color: #475569; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    color: #334155;
+    font-size: 0.78rem;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 700px) {
+    .panel-row { grid-template-columns: repeat(2, 1fr); }
+    .insight-grid { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .hex-wrap { width: 320px; height: 320px; }
+    .l-external { width: 320px; height: 320px; }
+    .l-adapter  { width: 246px; height: 246px; top: 37px; left: 37px; }
+    .l-port     { width: 182px; height: 182px; top: 69px; left: 69px; }
+    .l-service  { width: 122px; height: 122px; top: 99px; left: 99px; }
+    .l-core     { width: 70px; height: 70px; top: 125px; left: 125px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Hexagonal Architecture</h1>
+<p class="subtitle">Ports &amp; Adapters Pattern — 스터디 핸드아웃 · 클릭해서 탐색하세요</p>
+
+<!-- Diagram -->
+<div class="hex-container">
+  <div class="hex-wrap">
+
+    <div class="layer l-external" onclick="showDetail('external')">
+      <span class="layer-label">4. External World</span>
+    </div>
+
+    <div class="layer l-adapter" onclick="showDetail('adapter')">
+      <span class="layer-label">3. Adapters</span>
+    </div>
+
+    <!-- Port boundary ring -->
+    <div class="layer l-port" onclick="showDetail('port')">
+      <span class="layer-label">— Port Interface Boundary —</span>
+    </div>
+
+    <div class="layer l-service" onclick="showDetail('service')">
+      <span class="layer-label">2. Services</span>
+    </div>
+
+    <div class="layer l-core" onclick="showDetail('core')">
+      <span class="layer-label">1. Core</span>
+    </div>
+
+    <!-- Adapter badges -->
+    <div class="badge" style="top:30px; left:50px"  onclick="showDetail('adapter')">psutil</div>
+    <div class="badge" style="top:80px; left:10px"  onclick="showDetail('adapter')">macmon</div>
+    <div class="badge" style="top:160px; left:0"    onclick="showDetail('adapter')">httpx / AI APIs</div>
+    <div class="badge" style="top:260px; left:0"    onclick="showDetail('adapter')">claude_web (CDP)</div>
+    <div class="badge" style="top:350px; left:20px" onclick="showDetail('adapter')">ollama</div>
+    <div class="badge" style="top:420px; left:80px" onclick="showDetail('adapter')">lm_studio</div>
+    <div class="badge" style="top:460px; left:200px" onclick="showDetail('adapter')">geekmagic</div>
+    <div class="badge" style="top:30px; right:30px"  onclick="showDetail('adapter')">copilot API</div>
+    <div class="badge" style="top:120px; right:5px"  onclick="showDetail('adapter')">zhipuai</div>
+    <div class="badge" style="top:230px; right:0"    onclick="showDetail('adapter')">openclaw notify</div>
+
+    <!-- Dependency arrows -->
+    <svg class="arrows-svg" viewBox="0 0 600 600">
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#475569"/>
+        </marker>
+      </defs>
+      <!-- four inward arrows -->
+      <line x1="300" y1="20"  x2="300" y2="130" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+      <line x1="20"  y1="300" x2="130" y2="300" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+      <line x1="580" y1="300" x2="470" y2="300" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+      <line x1="300" y1="580" x2="300" y2="470" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+      <text x="310" y="80"  fill="#334155" font-size="9" font-family="monospace">inward only</text>
+    </svg>
+
+  </div>
+</div>
+
+<!-- Panel cards -->
+<div class="panel-row">
+  <div class="panel-card pc-core" onclick="showDetail('core')">
+    <h3>Core</h3>
+    <span class="tag">명사 · noun</span>
+    <p>도메인 모델 + Port 정의. 외부 라이브러리 import 없음. 같은 입력 → 항상 같은 출력.</p>
+  </div>
+  <div class="panel-card pc-service" onclick="showDetail('service')">
+    <h3>Service</h3>
+    <span class="tag">동사 · verb</span>
+    <p>흐름 조율. Port를 통해 외부와 협력. 세상의 중심. 세상이 Service에 맞춰야 한다.</p>
+  </div>
+  <div class="panel-card pc-port" onclick="showDetail('port')">
+    <h3>Port</h3>
+    <span class="tag">씬 레이어 · thin</span>
+    <p>ABC 인터페이스만. 구현 코드 없음. "이 모양으로 줘야 해"라는 계약서.</p>
+  </div>
+  <div class="panel-card pc-adapter" onclick="showDetail('adapter')">
+    <h3>Adapter</h3>
+    <span class="tag">외부 접착제 · glue</span>
+    <p>Port를 구현 + 외부 라이브러리 사용. Port 하나에 어댑터 여러 개 붙을 수 있음.</p>
+  </div>
+</div>
+
+<!-- Detail popup -->
+<div class="detail-box" id="detailBox">
+  <h3 id="detailTitle"></h3>
+  <pre id="detailCode"></pre>
+</div>
+
+<!-- Key insights -->
+<div class="insights">
+  <h2>핵심 인사이트</h2>
+  <div class="insight-grid">
+    <div class="insight">
+      <span class="icon">🎯</span>
+      <div class="text">
+        <strong>의존성은 항상 안쪽으로</strong>
+        <span>Core는 아무것도 모른다. Adapter가 Port를 알고, Port가 Core를 안다. 방향이 뒤집히면 Hexagonal이 깨진다.</span>
+      </div>
+    </div>
+    <div class="insight">
+      <span class="icon">📜</span>
+      <div class="text">
+        <strong>Port는 계약서, 코드가 아니다</strong>
+        <span>Port가 두꺼워지면 경계가 흐려진다. Port는 얇을수록 Hexagonal이 건강하다는 신호다.</span>
+      </div>
+    </div>
+    <div class="insight">
+      <span class="icon">🔌</span>
+      <div class="text">
+        <strong>Port 하나 → Adapter 여러 개</strong>
+        <span>LocalLlmPort 하나에 OllamaAdapter와 LMStudioAdapter가 붙는다. Service는 어떤 Adapter인지 모른다.</span>
+      </div>
+    </div>
+    <div class="insight">
+      <span class="icon">🧭</span>
+      <div class="text">
+        <strong>아키텍처는 발견이다</strong>
+        <span>"Make it work → Make it right." 처음엔 뭉뚱그려 만들다가 코드가 말해줄 때 경계를 발견한다.</span>
+      </div>
+    </div>
+    <div class="insight">
+      <span class="icon">🧪</span>
+      <div class="text">
+        <strong>Core가 순수할수록 테스트가 쉽다</strong>
+        <span>Core 테스트에 mock이 필요하면 Core에 있으면 안 되는 게 섞여 있다는 신호다.</span>
+      </div>
+    </div>
+    <div class="insight">
+      <span class="icon">🌍</span>
+      <div class="text">
+        <strong>세상이 Service에 맞춰야 한다</strong>
+        <span>psutil이 macmon으로 바뀌어도, claude.ai HTML이 바뀌어도 Service/Core는 흔들리지 않는다.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hexagonal vs Clean Architecture -->
+<div class="compare">
+  <h2>Hexagonal vs Clean Architecture</h2>
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h3>Hexagonal (Ports &amp; Adapters)</h3>
+      <ul>
+        <li>창시자: Alistair Cockburn (2005)</li>
+        <li>구조: 내부 / 외부 2분법</li>
+        <li>핵심: 경계 (Port 안쪽 vs 바깥쪽)</li>
+        <li>안쪽 구조화 방식은 자유</li>
+        <li>진입장벽 낮음</li>
+      </ul>
+    </div>
+    <div class="compare-card" style="border-color:#a78bfa44">
+      <h3 style="color:#c4b5fd">Clean Architecture (Uncle Bob)</h3>
+      <ul>
+        <li>창시자: Robert C. Martin (2012)</li>
+        <li>구조: Entity → UseCase → Interface → Framework 4레이어</li>
+        <li>핵심: 경계 + 레이어 순서 엄격히</li>
+        <li>Hexagonal에서 영향 받음</li>
+        <li>진입장벽 높음, 소규모엔 과함</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<p class="footer">agentic-dev-gauge · Hexagonal Architecture Study Handout</p>
+
+<script>
+const details = {
+  core: {
+    title: '1. Core — 순수 도메인 (외부 import 없음)',
+    code: `<span class="kw-gray"># src/core/models.py</span>
+<span class="kw-purple">from</span> dataclasses <span class="kw-purple">import</span> dataclass  <span class="kw-gray"># 표준 라이브러리만 OK</span>
+<span class="kw-purple">from</span> typing <span class="kw-purple">import</span> Optional
+
+<span class="kw-yellow">@dataclass</span>
+<span class="kw-purple">class</span> <span class="kw-green">SystemSnapshot</span>:        <span class="kw-gray"># 명사 — 데이터가 어떻게 생겼는지</span>
+    cpu_percent: <span class="kw-blue">float</span>
+    memory_percent: <span class="kw-blue">float</span>
+    disk_percent: <span class="kw-blue">float</span>
+
+<span class="kw-gray"># 순수 계산 로직 — 외부 없이 혼자 동작</span>
+<span class="kw-purple">def</span> <span class="kw-green">is_critical</span>(value: <span class="kw-blue">float</span>, threshold: <span class="kw-blue">float</span>) -> <span class="kw-blue">bool</span>:
+    <span class="kw-purple">return</span> value >= threshold   <span class="kw-gray"># 같은 입력 → 항상 같은 출력</span>
+
+<span class="kw-gray"># 절대 안 됨 ❌</span>
+<span class="kw-gray"># import httpx</span>
+<span class="kw-gray"># import psutil</span>
+<span class="kw-gray"># import fastapi</span>`
+  },
+  service: {
+    title: '2. Service — 흐름 조율 (Port를 통해 외부와 협력)',
+    code: `<span class="kw-gray"># src/services/usage_service.py</span>
+<span class="kw-purple">import</span> asyncio                          <span class="kw-gray"># 표준 라이브러리 OK</span>
+<span class="kw-purple">from</span> src.core.ports.usage <span class="kw-purple">import</span> UsagePort  <span class="kw-gray"># Port만 앎</span>
+
+<span class="kw-purple">class</span> <span class="kw-green">UsageService</span>:
+    <span class="kw-purple">def</span> <span class="kw-green">__init__</span>(self, ports: list[UsagePort]):  <span class="kw-gray"># 주입받음</span>
+        self._ports = ports
+        self._cache = <span class="kw-blue">None</span>
+
+    <span class="kw-purple">async def</span> <span class="kw-green">collect</span>(self):           <span class="kw-gray"># 동사 — 무언가를 한다</span>
+        results = []
+        <span class="kw-purple">for</span> port <span class="kw-purple">in</span> self._ports:
+            data = <span class="kw-purple">await</span> port.fetch()   <span class="kw-gray"># Port 호출만. httpx 모름</span>
+            results.append(data)
+        self._cache = results
+
+<span class="kw-gray"># 절대 안 됨 ❌</span>
+<span class="kw-gray"># import httpx  → Adapter 몫</span>
+<span class="kw-gray"># import psutil → Adapter 몫</span>`
+  },
+  port: {
+    title: 'Port — 씬 레이어. 계약서. 구현 코드 없음',
+    code: `<span class="kw-gray"># src/core/ports/usage.py</span>
+<span class="kw-purple">from</span> abc <span class="kw-purple">import</span> ABC, abstractmethod
+<span class="kw-purple">from</span> src.core.models <span class="kw-purple">import</span> UsageSnapshot
+
+<span class="kw-purple">class</span> <span class="kw-yellow">UsagePort</span>(ABC):               <span class="kw-gray"># 얇다 — 구현 코드 없음</span>
+    <span class="kw-yellow">@abstractmethod</span>
+    <span class="kw-purple">async def</span> <span class="kw-green">fetch</span>(self) -> UsageSnapshot:
+        ...                            <span class="kw-gray"># "이 모양으로 줘야 해" 계약만</span>
+
+<span class="kw-gray"># Port 하나 → Adapter 여러 개 가능</span>
+<span class="kw-gray"># AnthropicAdapter(UsagePort)</span>
+<span class="kw-gray"># CopilotAdapter(UsagePort)</span>
+<span class="kw-gray"># ZhipuAIAdapter(UsagePort)</span>
+<span class="kw-gray"># MockAdapter(UsagePort)  ← 테스트용</span>
+
+<span class="kw-gray"># Port가 두꺼워지면 경계가 흐려진다는 신호 ⚠️</span>`
+  },
+  adapter: {
+    title: 'Adapter — Port 구현 + 외부 라이브러리 사용',
+    code: `<span class="kw-gray"># src/adapters/ai_usage/ollama_usage.py</span>
+<span class="kw-purple">import</span> httpx                            <span class="kw-gray"># 외부 라이브러리 OK (여기만)</span>
+<span class="kw-purple">from</span> src.core.ports.usage <span class="kw-purple">import</span> UsagePort
+<span class="kw-purple">from</span> src.core.models <span class="kw-purple">import</span> UsageSnapshot
+
+<span class="kw-purple">class</span> <span class="kw-blue">OllamaAdapter</span>(UsagePort):        <span class="kw-gray"># Port 규격에 맞춰야 함</span>
+    <span class="kw-purple">async def</span> <span class="kw-green">fetch</span>(self) -> UsageSnapshot:
+        <span class="kw-purple">async with</span> httpx.AsyncClient() <span class="kw-purple">as</span> c:
+            resp = <span class="kw-purple">await</span> c.get(<span class="kw-green">"http://localhost:11434/api/ps"</span>)
+        <span class="kw-purple">return</span> self._parse(resp.json())
+
+<span class="kw-purple">class</span> <span class="kw-blue">LMStudioAdapter</span>(UsagePort):      <span class="kw-gray"># 같은 Port, 다른 구현</span>
+    <span class="kw-purple">async def</span> <span class="kw-green">fetch</span>(self) -> UsageSnapshot:
+        <span class="kw-purple">async with</span> httpx.AsyncClient() <span class="kw-purple">as</span> c:
+            resp = <span class="kw-purple">await</span> c.get(<span class="kw-green">"http://localhost:1234/api/v0/models"</span>)
+        <span class="kw-purple">return</span> self._parse(resp.json())
+
+<span class="kw-gray"># Service는 둘 중 어느 것인지 모른다</span>`
+  },
+  external: {
+    title: 'External World — OS, 외부 API, 브라우저, 하드웨어',
+    code: `<span class="kw-gray"># Adapter가 직접 연결하는 외부 세계</span>
+
+psutil        <span class="kw-gray">→ OS 시스템 메트릭 (CPU, Memory, Disk)</span>
+macmon        <span class="kw-gray">→ Apple Silicon 전용 메트릭</span>
+httpx         <span class="kw-gray">→ Anthropic, OpenAI, ZhipuAI, GitHub API</span>
+CDP (Chrome)  <span class="kw-gray">→ claude.ai/chatgpt.com 로그인 세션 스크래핑</span>
+ollama        <span class="kw-gray">→ 로컬 LLM 서버 (http://localhost:11434)</span>
+lm_studio     <span class="kw-gray">→ 로컬 LLM 서버 (http://localhost:1234)</span>
+geekmagic     <span class="kw-gray">→ SmallTV Ultra 외부 디스플레이 푸시</span>
+
+<span class="kw-gray"># 이 중 어떤 것이 바뀌어도</span>
+<span class="kw-gray"># Service / Core 코드는 변경 없음</span>
+<span class="kw-gray"># 해당 Adapter만 수정하면 된다 ✅</span>`
+  }
+};
+
+function showDetail(key) {
+  const box = document.getElementById('detailBox');
+  const title = document.getElementById('detailTitle');
+  const code = document.getElementById('detailCode');
+  const d = details[key];
+  if (!d) return;
+  title.textContent = d.title;
+  code.innerHTML = d.code;
+  box.classList.add('visible');
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
